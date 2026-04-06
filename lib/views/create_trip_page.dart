@@ -13,6 +13,9 @@ class _CreateTripPageState extends State<CreateTripPage> {
   final inicioController = TextEditingController();
   final fimController = TextEditingController();
   final descricaoController = TextEditingController();
+  final participanteController = TextEditingController();
+
+  final List<String> participantes = [];
 
   DateTime? dataInicioSelecionada;
   DateTime? dataFimSelecionada;
@@ -23,6 +26,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
     inicioController.dispose();
     fimController.dispose();
     descricaoController.dispose();
+    participanteController.dispose();
     super.dispose();
   }
 
@@ -65,6 +69,25 @@ class _CreateTripPageState extends State<CreateTripPage> {
     }
   }
 
+  void adicionarParticipante() {
+    final nome = participanteController.text.trim();
+
+    if (nome.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      participantes.add(nome);
+      participanteController.clear();
+    });
+  }
+
+  void removerParticipante(String participante) {
+    setState(() {
+      participantes.remove(participante);
+    });
+  }
+
   void guardarViagem() {
     final nome = nomeController.text.trim();
     final inicio = inicioController.text.trim();
@@ -85,6 +108,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
       inicio: inicio,
       fim: fim,
       descricao: descricao,
+      participantes: participantes,
     );
 
     Navigator.pop(context, viagem);
@@ -150,6 +174,38 @@ class _CreateTripPageState extends State<CreateTripPage> {
                   ),
                 ),
               ),
+              const SizedBox(height: 18),
+              TextField(
+                controller: participanteController,
+                decoration: InputDecoration(
+                  labelText: 'Adicionar participante',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: adicionarParticipante,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (participantes.isNotEmpty)
+                Column(
+                  children: participantes.map((participante) {
+                    return Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.person),
+                        title: Text(participante),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete),
+                          onPressed: () {
+                            removerParticipante(participante);
+                          },
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
               const SizedBox(height: 28),
               Row(
                 children: [

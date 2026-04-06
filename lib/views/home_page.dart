@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'create_trip_page.dart';
 import '../models/trip.dart';
+import 'trip_details_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -42,6 +43,14 @@ class _HomePageState extends State<HomePage> {
                 return Card(
                   margin: const EdgeInsets.all(12),
                   child: ListTile(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TripDetailsPage(trip: viagem),
+                        ),
+                      );
+                    },
                     title: Text(viagem.nome),
                     subtitle: Text(
                       '${viagem.inicio} - ${viagem.fim}\n${viagem.descricao}',
