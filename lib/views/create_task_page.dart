@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import '../models/task.dart';
+import '../data/database/database_provider.dart';
 
 class CreateTaskPage extends StatefulWidget {
+  final int tripId;
+  final int currentUserId;
   final List<String> participantes;
 
-  const CreateTaskPage({super.key, required this.participantes});
+  const CreateTaskPage({
+    super.key,
+    required this.tripId,
+    required this.currentUserId,
+    required this.participantes,
+  });
 
   @override
   State<CreateTaskPage> createState() => _CreateTaskPageState();
@@ -20,33 +28,49 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     super.dispose();
   }
 
-  void guardarTarefa() {
+  Future<void> guardarTarefa() async {
     final descricao = descricaoController.text.trim();
     final responsavel = responsavelSelecionado;
 
     if (descricao.isEmpty || responsavel == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Preenche todos os campos.'),
-        ),
+        const SnackBar(content: Text('Preenche todos os campos.')),
       );
       return;
     }
 
-    final tarefa = Task(
-      descricao: descricao,
-      responsavel: responsavel,
-    );
+    try {
+      // Save task to database
+      final novaTask = await appDatabase.tasksDao.createTask(
+        assignedTo: widget.currentUserId,
+        tripId: widget.tripId,
+        title: descricao,
+        description: responsavel,
+        status: 'pending',
+      );
 
-    Navigator.pop(context, tarefa);
+      // Create app-level task object
+      final tarefa = Task(
+        id: novaTask.id,
+        tripId: novaTask.tripId,
+        assignedToUserId: novaTask.assignedTo,
+        descricao: descricao,
+        responsavel: responsavel,
+        status: 'pending',
+      );
+
+      Navigator.pop(context, tarefa);
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro ao guardar tarefa: $e')));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Criar Tarefa'),
-      ),
+      appBar: AppBar(title: const Text('Criar Tarefa')),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -62,7 +86,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
             const SizedBox(height: 18),
             DropdownButtonFormField<String>(
-              value: responsavelSelecionado,
+              initialValue: responsavelSelecionado,
               items: widget.participantes.map((participante) {
                 return DropdownMenuItem<String>(
                   value: participante,

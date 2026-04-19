@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/trip.dart';
+import '../data/database/database_provider.dart';
 
 class CreateTripPage extends StatefulWidget {
   const CreateTripPage({super.key});
@@ -56,7 +57,8 @@ class _CreateTripPageState extends State<CreateTripPage> {
   Future<void> selecionarDataFim() async {
     final DateTime? dataEscolhida = await showDatePicker(
       context: context,
-      initialDate: dataFimSelecionada ?? dataInicioSelecionada ?? DateTime.now(),
+      initialDate:
+          dataFimSelecionada ?? dataInicioSelecionada ?? DateTime.now(),
       firstDate: dataInicioSelecionada ?? DateTime(2020),
       lastDate: DateTime(2100),
     );
@@ -88,39 +90,39 @@ class _CreateTripPageState extends State<CreateTripPage> {
     });
   }
 
-  void guardarViagem() {
+  Future<void> guardarViagem() async {
     final nome = nomeController.text.trim();
-    final inicio = inicioController.text.trim();
-    final fim = fimController.text.trim();
     final descricao = descricaoController.text.trim();
 
-    if (nome.isEmpty || inicio.isEmpty || fim.isEmpty || descricao.isEmpty) {
+    if (nome.isEmpty ||
+        dataInicioSelecionada == null ||
+        dataFimSelecionada == null ||
+        descricao.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Preenche todos os campos.'),
-        ),
+        const SnackBar(content: Text('Preenche todos os campos.')),
       );
       return;
     }
 
-    final viagem = Trip(
-      nome: nome,
-      inicio: inicio,
-      fim: fim,
-      descricao: descricao,
-      participantes: participantes,
+    final user = await appDatabase.usersDao.getUserByEmail(
+      'demo@unitrip.local',
     );
 
-    Navigator.pop(context, viagem);
+    await appDatabase.tripsDao.createTrip(
+      name: nome,
+      description: descricao,
+      startDate: dataInicioSelecionada!,
+      endDate: dataFimSelecionada!,
+      createdByUserId: user!.id,
+    );
+
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Criar Viagem'),
-        centerTitle: false,
-      ),
+      appBar: AppBar(title: const Text('Criar Viagem'), centerTitle: false),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),

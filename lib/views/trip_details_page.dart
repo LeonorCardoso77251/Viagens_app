@@ -12,9 +12,7 @@ class TripDetailsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(trip.nome),
-      ),
+      appBar: AppBar(title: Text(trip.nome)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -22,13 +20,10 @@ class TripDetailsPage extends StatelessWidget {
           children: [
             Text(
               trip.nome,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            Text('Datas: ${trip.inicio} - ${trip.fim}'),
+            Text('Datas: ${trip.inicioFormatado} - ${trip.fimFormatado}'),
             const SizedBox(height: 10),
             const Text(
               'Descrição:',
@@ -40,10 +35,7 @@ class TripDetailsPage extends StatelessWidget {
 
             const Text(
               'Participantes:',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
 
