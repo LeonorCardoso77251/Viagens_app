@@ -84,7 +84,7 @@ class _TripTasksPageState extends State<TripTasksPage> {
 
     return Scaffold(
       appBar: AppBar(title: Text('Tarefas - ${widget.trip.nome}')),
-      body: StreamBuilder<List<dynamic>>(
+      body: StreamBuilder<List<Task>>(
         stream: appDatabase.tasksDao.watchTasksForTrip(widget.trip.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -104,42 +104,30 @@ class _TripTasksPageState extends State<TripTasksPage> {
           return ListView.builder(
             itemCount: tasks.length,
             itemBuilder: (context, index) {
-              final dbTask = tasks[index];
-              final isDone = dbTask.status == 'done';
+              final tarefa = tasks[index];
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: ListTile(
                   leading: Checkbox(
-                    value: isDone,
+                    value: tarefa.isDone,
                     onChanged: (_) {
-                      _alternarConclusao(
-                        Task(
-                          id: dbTask.id,
-                          tripId: dbTask.tripId,
-                          assignedToUserId: dbTask.assignedTo,
-                          descricao: dbTask.title,
-                          responsavel: dbTask.title,
-                          status: dbTask.status,
-                        ),
-                      );
+                      _alternarConclusao(tarefa);
                     },
                   ),
                   title: Text(
-                    dbTask.title,
+                    tarefa.descricao,
                     style: TextStyle(
-                      decoration: isDone
+                      decoration: tarefa.isDone
                           ? TextDecoration.lineThrough
                           : TextDecoration.none,
                     ),
                   ),
-                  subtitle: dbTask.description != null
-                      ? Text(dbTask.description)
-                      : null,
+                  subtitle: Text('Responsável: ${tarefa.responsavel}'),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete),
                     onPressed: () {
-                      _removerTarefa(dbTask.id);
+                      _removerTarefa(tarefa.id);
                     },
                   ),
                 ),

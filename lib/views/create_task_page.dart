@@ -40,22 +40,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     }
 
     try {
-      // Save task to database
-      final novaTask = await appDatabase.tasksDao.createTask(
+      final tarefa = await appDatabase.tasksDao.createTask(
         assignedTo: widget.currentUserId,
         tripId: widget.tripId,
         title: descricao,
         description: responsavel,
-        status: 'pending',
-      );
-
-      // Create app-level task object
-      final tarefa = Task(
-        id: novaTask.id,
-        tripId: novaTask.tripId,
-        assignedToUserId: novaTask.assignedTo,
-        descricao: descricao,
-        responsavel: responsavel,
         status: 'pending',
       );
 
