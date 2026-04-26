@@ -1,12 +1,13 @@
 import 'package:drift/drift.dart';
 
 import '../app_database.dart';
-import '../tables/trips.dart';
 import '../tables/trip_members.dart';
+import '../tables/trips.dart';
+import '../tables/users.dart';
 
 part 'trips_dao.g.dart';
 
-@DriftAccessor(tables: [Trips, TripMembers])
+@DriftAccessor(tables: [Trips, TripMembers, Users])
 class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
   TripsDao(super.attachedDatabase);
 
@@ -36,6 +37,20 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
         ),
       );
 
+      final demoUser = await (select(
+        users,
+      )..where((u) => u.email.equals('demo@unitrip.local'))).getSingleOrNull();
+
+      if (demoUser != null && demoUser.id != createdByUserId) {
+        await into(tripMembers).insert(
+          TripMembersCompanion.insert(
+            userId: demoUser.id,
+            tripId: trip.id,
+            isAdmin: const Value(false),
+          ),
+        );
+      }
+
       return trip;
     });
   }
@@ -47,6 +62,16 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
 
     return query.watch().map(
       (rows) => rows.map((row) => row.readTable(trips)).toList(),
+    );
+  }
+
+  Future<List<String>> getParticipantNamesForTrip(int tripId) {
+    final query = select(users).join([
+      innerJoin(tripMembers, tripMembers.userId.equalsExp(users.id)),
+    ])..where(tripMembers.tripId.equals(tripId));
+
+    return query.get().then(
+      (rows) => rows.map((row) => row.readTable(users).name).toList(),
     );
   }
 }

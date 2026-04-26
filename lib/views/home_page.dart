@@ -71,33 +71,43 @@ class _HomePageState extends State<HomePage> {
                 itemBuilder: (context, index) {
                   final dbTrip = trips[index];
 
-                  // Convert database Trip to app Trip model
-                  final trip = Trip(
-                    id: dbTrip.id,
-                    nome: dbTrip.name,
-                    inicio: dbTrip.startDate,
-                    fim: dbTrip.endDate,
-                    descricao: dbTrip.description ?? '',
-                    participantes: [],
-                  );
-
-                  return Card(
-                    margin: const EdgeInsets.all(12),
-                    child: ListTile(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => TripDetailsPage(trip: trip),
-                          ),
-                        );
-                      },
-                      title: Text(trip.nome),
-                      subtitle: Text(
-                        '${trip.inicioFormatado} - ${trip.fimFormatado}\n${trip.descricao}',
-                      ),
-                      isThreeLine: true,
+                  return FutureBuilder<List<String>>(
+                    future: appDatabase.tripsDao.getParticipantNamesForTrip(
+                      dbTrip.id,
                     ),
+                    builder: (context, participantSnapshot) {
+                      final participantes = participantSnapshot.data ?? [];
+
+                      // Convert database Trip to app Trip model
+                      final trip = Trip(
+                        id: dbTrip.id,
+                        nome: dbTrip.name,
+                        inicio: dbTrip.startDate,
+                        fim: dbTrip.endDate,
+                        descricao: dbTrip.description ?? '',
+                        participantes: participantes,
+                      );
+
+                      return Card(
+                        margin: const EdgeInsets.all(12),
+                        child: ListTile(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    TripDetailsPage(trip: trip),
+                              ),
+                            );
+                          },
+                          title: Text(trip.nome),
+                          subtitle: Text(
+                            '${trip.inicioFormatado} - ${trip.fimFormatado}\n${trip.descricao}',
+                          ),
+                          isThreeLine: true,
+                        ),
+                      );
+                    },
                   );
                 },
               );
