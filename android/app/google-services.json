@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "88193541674",
+    "project_id": "unitrip-7dee5",
+    "storage_bucket": "unitrip-7dee5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:88193541674:android:c9dd1bf8210fa9ecbc4553",
+        "android_client_info": {
+          "package_name": "com.example.viagens_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDkUvUq7FePkIzk1-K2idEpg3YrW6LuM9o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
