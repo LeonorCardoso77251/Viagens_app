@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../models/trip.dart';
 import '../data/database/database_provider.dart';
 
 class CreateTripPage extends StatefulWidget {

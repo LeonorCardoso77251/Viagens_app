@@ -13,12 +13,14 @@ import 'tables/votes.dart';
 import 'tables/tasks.dart';
 import 'tables/expenses.dart';
 import 'tables/expense_splits.dart';
+import 'tables/activities.dart';
 
 import 'dao/trips_dao.dart';
 import 'dao/users_dao.dart';
 import 'dao/destination_options_dao.dart';
 import 'dao/tasks_dao.dart';
 import 'dao/expenses_dao.dart';
+import 'dao/activities_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -32,8 +34,9 @@ part 'app_database.g.dart';
     Tasks,
     Expenses,
     ExpenseSplits,
+    Activities,
   ],
-  daos: [UsersDao, TripsDao, DestinationOptionsDao, TasksDao, ExpensesDao],
+  daos: [UsersDao, TripsDao, DestinationOptionsDao, TasksDao, ExpensesDao, ActivitiesDao,],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());

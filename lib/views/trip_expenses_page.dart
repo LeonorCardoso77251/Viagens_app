@@ -1,80 +1,125 @@
 import 'package:flutter/material.dart';
-import '../models/expense.dart';
-import '../models/trip.dart';
+import '../data/database/app_database.dart';
+import '../data/database/database_provider.dart';
+import '../data/database/dao/expenses_dao.dart';
 import 'create_expense_page.dart';
 
 class TripExpensesPage extends StatefulWidget {
   final Trip trip;
 
-  const TripExpensesPage({super.key, required this.trip});
+  const TripExpensesPage({
+    super.key,
+    required this.trip,
+  });
 
   @override
   State<TripExpensesPage> createState() => _TripExpensesPageState();
 }
 
 class _TripExpensesPageState extends State<TripExpensesPage> {
-  final List<Expense> despesas = [];
+  ExpensesDao get expensesDao => appDatabase.expensesDao;
 
   Future<void> abrirCriarDespesa() async {
-    final Expense? novaDespesa = await Navigator.push(
+    final novaDespesa = await Navigator.push<Map<String, dynamic>>(
       context,
-      MaterialPageRoute(
-        builder: (context) => const CreateExpensePage(),
-      ),
+      MaterialPageRoute(builder: (context) => const CreateExpensePage()),
     );
 
-    if (novaDespesa != null) {
-      setState(() {
-        despesas.add(novaDespesa);
-      });
-    }
+    if (novaDespesa == null) return;
+
+    final amountCents = novaDespesa['amountCents'] as int;
+    final title = novaDespesa['title'] as String;
+    final description = novaDespesa['description'] as String?;
+
+    await expensesDao.createExpense(
+      tripId: widget.trip.id,
+      paidBy: 1, // temporary DemoUser id
+      title: title,
+      description: description,
+      amountCents: amountCents,
+      splits: [
+        ExpenseSplitInput(
+          userId: 1, // temporary DemoUser id
+          amountCents: amountCents,
+        ),
+      ],
+    );
   }
 
-  double get total =>
-      despesas.fold(0, (sum, item) => sum + item.valor);
+  String eurosFromCents(int cents) {
+    return '€${(cents / 100).toStringAsFixed(2)}';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final tripId = widget.trip.id;
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Despesas - ${widget.trip.nome}'),
-      ),
+      appBar: AppBar(title: Text('Despesas - ${widget.trip.name}')),
       body: Column(
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            color: Colors.blue.shade50,
-            child: Text(
-              'Total: €${total.toStringAsFixed(2)}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+          StreamBuilder<int>(
+            stream: expensesDao.watchTotalExpensesForTrip(tripId),
+            builder: (context, snapshot) {
+              final totalCents = snapshot.data ?? 0;
+
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                color: Colors.blue.shade50,
+                child: Text(
+                  'Total: ${eurosFromCents(totalCents)}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              );
+            },
           ),
           Expanded(
-            child: despesas.isEmpty
-                ? const Center(
-                    child: Text('Nenhuma despesa registada.'),
-                  )
-                : ListView.builder(
-                    itemCount: despesas.length,
-                    itemBuilder: (context, index) {
-                      final despesa = despesas[index];
+            child: StreamBuilder<List<Expense>>(
+              stream: expensesDao.watchExpensesForTrip(tripId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                      return Card(
-                        margin: const EdgeInsets.all(10),
-                        child: ListTile(
-                          title: Text(despesa.descricao),
-                          subtitle: Text('Pago por: ${despesa.pagoPor}'),
-                          trailing: Text(
-                            '€${despesa.valor.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                final despesas = snapshot.data ?? [];
+
+                if (despesas.isEmpty) {
+                  return const Center(
+                    child: Text('Nenhuma despesa registada.'),
+                  );
+                }
+
+                return ListView.builder(
+                  itemCount: despesas.length,
+                  itemBuilder: (context, index) {
+                    final despesa = despesas[index];
+
+                    return Card(
+                      margin: const EdgeInsets.all(10),
+                      child: ListTile(
+                        title: Text(despesa.title),
+                        subtitle: Text(
+                          [
+                            if (despesa.description != null &&
+                                despesa.description!.isNotEmpty)
+                              despesa.description!,
+                            'Pago por: ${despesa.paidBy}',
+                          ].join('\n'),
                         ),
-                      );
-                    },
-                  ),
+                        trailing: Text(
+                          eurosFromCents(despesa.amountCents),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),

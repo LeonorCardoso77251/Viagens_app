@@ -1,9 +1,21 @@
 import 'package:flutter/material.dart';
+import '../data/database/app_database.dart';
 import '../data/database/database_provider.dart';
-import '../models/task.dart';
 
 class TasksPage extends StatelessWidget {
   const TasksPage({super.key});
+
+  String statusLabel(String status) {
+    switch (status) {
+      case 'in_progress':
+        return 'Em progresso';
+      case 'done':
+        return 'Concluída';
+      case 'pending':
+      default:
+        return 'Pendente';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -11,23 +23,32 @@ class TasksPage extends StatelessWidget {
       body: FutureBuilder(
         future: appDatabase.usersDao.getUserByEmail('demo@unitrip.local'),
         builder: (context, userSnapshot) {
-          if (!userSnapshot.hasData) {
+          if (userSnapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!userSnapshot.hasData || userSnapshot.data == null) {
+            return const Center(child: Text('Erro ao carregar utilizador.'));
           }
 
           final userId = userSnapshot.data!.id;
 
-          return FutureBuilder(
+          return FutureBuilder<List<Task>>(
             future: appDatabase.tasksDao.getTasksForUser(userId),
             builder: (context, tasksSnapshot) {
-              if (!tasksSnapshot.hasData) {
+              if (tasksSnapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              final tasks = tasksSnapshot.data!;
+              if (tasksSnapshot.hasError) {
+                return Center(child: Text('Erro: ${tasksSnapshot.error}'));
+              }
 
-              final uncompletedTasks =
-              tasks.where((task) => !task.isDone).toList();
+              final tasks = tasksSnapshot.data ?? [];
+
+              final uncompletedTasks = tasks
+                  .where((task) => task.status != 'done')
+                  .toList();
 
               if (uncompletedTasks.isEmpty) {
                 return const Center(
@@ -45,8 +66,15 @@ class TasksPage extends StatelessWidget {
 
                   return ListTile(
                     leading: const Icon(Icons.check_box_outline_blank),
-                    title: Text(task.descricao),
-                    subtitle: Text('Responsável: ${task.responsavel}'),
+                    title: Text(task.title),
+                    subtitle: Text(
+                      [
+                        if (task.description != null &&
+                            task.description!.isNotEmpty)
+                          task.description!,
+                        'Estado: ${statusLabel(task.status)}',
+                      ].join('\n'),
+                    ),
                   );
                 },
               );

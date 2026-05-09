@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'create_trip_page.dart';
-import '../models/trip.dart';
 import '../data/database/database_provider.dart';
 import 'trip_details_page.dart';
 
@@ -12,13 +11,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  @override
-  void initState() {
-    super.initState();
-    // Ensure demo user exists when app starts
-    appDatabase.usersDao.ensureDemoUser();
-  }
-
   String formatarData(DateTime data) {
     final dia = data.day.toString().padLeft(2, '0');
     final mes = data.month.toString().padLeft(2, '0');
@@ -36,7 +28,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: FutureBuilder<dynamic>(
+      body: FutureBuilder(
         future: appDatabase.usersDao.getUserByEmail('demo@unitrip.local'),
         builder: (context, userSnapshot) {
           if (userSnapshot.connectionState == ConnectionState.waiting) {
@@ -49,7 +41,7 @@ class _HomePageState extends State<HomePage> {
 
           final userId = userSnapshot.data!.id;
 
-          return StreamBuilder<List<dynamic>>(
+          return StreamBuilder(
             stream: appDatabase.tripsDao.watchTripsForUser(userId),
             builder: (context, tripsSnapshot) {
               if (tripsSnapshot.connectionState == ConnectionState.waiting) {
@@ -69,45 +61,25 @@ class _HomePageState extends State<HomePage> {
               return ListView.builder(
                 itemCount: trips.length,
                 itemBuilder: (context, index) {
-                  final dbTrip = trips[index];
+                  final trip = trips[index];
 
-                  return FutureBuilder<List<String>>(
-                    future: appDatabase.tripsDao.getParticipantNamesForTrip(
-                      dbTrip.id,
-                    ),
-                    builder: (context, participantSnapshot) {
-                      final participantes = participantSnapshot.data ?? [];
-
-                      // Convert database Trip to app Trip model
-                      final trip = Trip(
-                        id: dbTrip.id,
-                        nome: dbTrip.name,
-                        inicio: dbTrip.startDate,
-                        fim: dbTrip.endDate,
-                        descricao: dbTrip.description ?? '',
-                        participantes: participantes,
-                      );
-
-                      return Card(
-                        margin: const EdgeInsets.all(12),
-                        child: ListTile(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    TripDetailsPage(trip: trip),
-                              ),
-                            );
-                          },
-                          title: Text(trip.nome),
-                          subtitle: Text(
-                            '${trip.inicioFormatado} - ${trip.fimFormatado}\n${trip.descricao}',
+                  return Card(
+                    margin: const EdgeInsets.all(12),
+                    child: ListTile(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => TripDetailsPage(trip: trip),
                           ),
-                          isThreeLine: true,
-                        ),
-                      );
-                    },
+                        );
+                      },
+                      title: Text(trip.name),
+                      subtitle: Text(
+                        '${formatarData(trip.startDate)} - ${formatarData(trip.endDate)}\n${trip.description ?? ''}',
+                      ),
+                      isThreeLine: true,
+                    ),
                   );
                 },
               );

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../models/task.dart';
 import '../data/database/database_provider.dart';
 
 class CreateTaskPage extends StatefulWidget {
@@ -19,55 +18,71 @@ class CreateTaskPage extends StatefulWidget {
 }
 
 class _CreateTaskPageState extends State<CreateTaskPage> {
-  final descricaoController = TextEditingController();
-  String? responsavelSelecionado;
+  final titleController = TextEditingController();
+  final descriptionController = TextEditingController();
+
+  String statusSelecionado = 'pending';
 
   @override
   void dispose() {
-    descricaoController.dispose();
+    titleController.dispose();
+    descriptionController.dispose();
     super.dispose();
   }
 
   Future<void> guardarTarefa() async {
-    final descricao = descricaoController.text.trim();
-    final responsavel = responsavelSelecionado;
+    final title = titleController.text.trim();
+    final description = descriptionController.text.trim();
 
-    if (descricao.isEmpty || responsavel == null) {
+    if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preenche todos os campos.')),
+        const SnackBar(content: Text('Preenche o título da tarefa.')),
       );
       return;
     }
 
     try {
       final tarefa = await appDatabase.tasksDao.createTask(
-        assignedTo: widget.currentUserId,
+        assignedTo: widget.currentUserId, // temporary DemoUser/current user
         tripId: widget.tripId,
-        title: descricao,
-        description: responsavel,
-        status: 'pending',
+        title: title,
+        description: description.isEmpty ? null : description,
+        status: statusSelecionado,
       );
 
       Navigator.pop(context, tarefa);
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Erro ao guardar tarefa: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao guardar tarefa: $e')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Criar Tarefa')),
-      body: Padding(
+      appBar: AppBar(
+        title: const Text('Criar Tarefa'),
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
             TextField(
-              controller: descricaoController,
+              controller: titleController,
               decoration: InputDecoration(
-                labelText: 'Descrição da tarefa',
+                labelText: 'Título da tarefa',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: descriptionController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: 'Descrição opcional',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -75,20 +90,30 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
             const SizedBox(height: 18),
             DropdownButtonFormField<String>(
-              initialValue: responsavelSelecionado,
-              items: widget.participantes.map((participante) {
-                return DropdownMenuItem<String>(
-                  value: participante,
-                  child: Text(participante),
-                );
-              }).toList(),
+              initialValue: statusSelecionado,
+              items: const [
+                DropdownMenuItem(
+                  value: 'pending',
+                  child: Text('Pendente'),
+                ),
+                DropdownMenuItem(
+                  value: 'in_progress',
+                  child: Text('Em progresso'),
+                ),
+                DropdownMenuItem(
+                  value: 'done',
+                  child: Text('Concluída'),
+                ),
+              ],
               onChanged: (value) {
+                if (value == null) return;
+
                 setState(() {
-                  responsavelSelecionado = value;
+                  statusSelecionado = value;
                 });
               },
               decoration: InputDecoration(
-                labelText: 'Responsável',
+                labelText: 'Estado',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -101,9 +126,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   child: SizedBox(
                     height: 52,
                     child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
+                      onPressed: () => Navigator.pop(context),
                       child: const Text('Cancelar'),
                     ),
                   ),

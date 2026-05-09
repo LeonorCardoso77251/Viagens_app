@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/task.dart';
-import '../models/trip.dart';
+import '../data/database/app_database.dart';
 import '../data/database/database_provider.dart';
 import 'create_task_page.dart';
 
@@ -27,42 +26,31 @@ class _TripTasksPageState extends State<TripTasksPage> {
     final user = await appDatabase.usersDao.getUserByEmail(
       'demo@unitrip.local',
     );
-    if (user != null) {
-      setState(() {
-        _currentUserId = user.id;
-        _userLoaded = true;
-      });
-    }
+
+    if (user == null) return;
+
+    setState(() {
+      _currentUserId = user.id;
+      _userLoaded = true;
+    });
   }
 
   Future<void> abrirCriarTarefa() async {
-    if (widget.trip.participantes.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Adiciona participantes antes de criar tarefas.'),
-        ),
-      );
-      return;
-    }
-
-    final Task? novaTarefa = await Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CreateTaskPage(
           tripId: widget.trip.id,
-          participantes: widget.trip.participantes,
           currentUserId: _currentUserId,
+          participantes: const [],
         ),
       ),
     );
-
-    if (novaTarefa != null) {
-      // Task was saved to database, stream will update automatically
-    }
   }
 
   Future<void> _alternarConclusao(Task tarefa) async {
-    final newStatus = tarefa.isDone ? 'pending' : 'done';
+    final newStatus = tarefa.status == 'done' ? 'pending' : 'done';
+
     await appDatabase.tasksDao.updateTaskStatus(
       taskId: tarefa.id,
       status: newStatus,
@@ -73,17 +61,29 @@ class _TripTasksPageState extends State<TripTasksPage> {
     await appDatabase.tasksDao.deleteTask(taskId);
   }
 
+  String statusLabel(String status) {
+    switch (status) {
+      case 'in_progress':
+        return 'Em progresso';
+      case 'done':
+        return 'Concluída';
+      case 'pending':
+      default:
+        return 'Pendente';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_userLoaded) {
       return Scaffold(
-        appBar: AppBar(title: Text('Tarefas - ${widget.trip.nome}')),
+        appBar: AppBar(title: Text('Tarefas - ${widget.trip.name}')),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text('Tarefas - ${widget.trip.nome}')),
+      appBar: AppBar(title: Text('Tarefas - ${widget.trip.name}')),
       body: StreamBuilder<List<Task>>(
         stream: appDatabase.tasksDao.watchTasksForTrip(widget.trip.id),
         builder: (context, snapshot) {
@@ -105,25 +105,34 @@ class _TripTasksPageState extends State<TripTasksPage> {
             itemCount: tasks.length,
             itemBuilder: (context, index) {
               final tarefa = tasks[index];
+              final isDone = tarefa.status == 'done';
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: ListTile(
                   leading: Checkbox(
-                    value: tarefa.isDone,
+                    value: isDone,
                     onChanged: (_) {
                       _alternarConclusao(tarefa);
                     },
                   ),
                   title: Text(
-                    tarefa.descricao,
+                    tarefa.title,
                     style: TextStyle(
-                      decoration: tarefa.isDone
+                      decoration: isDone
                           ? TextDecoration.lineThrough
                           : TextDecoration.none,
                     ),
                   ),
-                  subtitle: Text('Responsável: ${tarefa.responsavel}'),
+                  subtitle: Text(
+                    [
+                      if (tarefa.description != null &&
+                          tarefa.description!.isNotEmpty)
+                        tarefa.description!,
+                      'Estado: ${statusLabel(tarefa.status)}',
+                      'Responsável: ${tarefa.assignedTo}',
+                    ].join('\n'),
+                  ),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete),
                     onPressed: () {

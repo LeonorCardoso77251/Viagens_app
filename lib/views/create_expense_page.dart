@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../models/expense.dart';
 
 class CreateExpensePage extends StatefulWidget {
   const CreateExpensePage({super.key});
@@ -9,55 +8,60 @@ class CreateExpensePage extends StatefulWidget {
 }
 
 class _CreateExpensePageState extends State<CreateExpensePage> {
-  final descricaoController = TextEditingController();
+  final titleController = TextEditingController();
+  final descriptionController = TextEditingController();
   final valorController = TextEditingController();
-  final pagoPorController = TextEditingController();
 
   @override
   void dispose() {
-    descricaoController.dispose();
+    titleController.dispose();
+    descriptionController.dispose();
     valorController.dispose();
-    pagoPorController.dispose();
     super.dispose();
   }
 
   void guardarDespesa() {
-    final descricao = descricaoController.text.trim();
+    final title = titleController.text.trim();
+    final description = descriptionController.text.trim();
     final valor = double.tryParse(valorController.text.trim());
-    final pagoPor = pagoPorController.text.trim();
 
-    if (descricao.isEmpty || valor == null || pagoPor.isEmpty) {
+    if (title.isEmpty || valor == null || valor <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Preenche todos os campos corretamente.'),
-        ),
+        const SnackBar(content: Text('Preenche os campos corretamente.')),
       );
       return;
     }
 
-    final despesa = Expense(
-      descricao: descricao,
-      valor: valor,
-      pagoPor: pagoPor,
-    );
-
-    Navigator.pop(context, despesa);
+    Navigator.pop(context, {
+      'title': title,
+      'description': description.isEmpty ? null : description,
+      'amountCents': (valor * 100).round(),
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Criar Despesa'),
-      ),
+      appBar: AppBar(title: const Text('Criar Despesa')),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
             TextField(
-              controller: descricaoController,
+              controller: titleController,
               decoration: InputDecoration(
-                labelText: 'Descrição',
+                labelText: 'Título',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: descriptionController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: 'Descrição opcional',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -69,16 +73,6 @@ class _CreateExpensePageState extends State<CreateExpensePage> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Valor (€)',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            TextField(
-              controller: pagoPorController,
-              decoration: InputDecoration(
-                labelText: 'Pago por',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),

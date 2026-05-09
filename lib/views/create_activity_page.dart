@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../models/activity.dart';
 
 class CreateActivityPage extends StatefulWidget {
   const CreateActivityPage({super.key});
@@ -40,7 +39,7 @@ class _CreateActivityPageState extends State<CreateActivityPage> {
   }
 
   Future<void> selecionarData() async {
-    final DateTime? dataEscolhida = await showDatePicker(
+    final dataEscolhida = await showDatePicker(
       context: context,
       initialDate: dataSelecionada ?? DateTime.now(),
       firstDate: DateTime(2020),
@@ -56,7 +55,7 @@ class _CreateActivityPageState extends State<CreateActivityPage> {
   }
 
   Future<void> selecionarHora() async {
-    final TimeOfDay? horaEscolhida = await showTimePicker(
+    final horaEscolhida = await showTimePicker(
       context: context,
       initialTime: horaSelecionada ?? TimeOfDay.now(),
     );
@@ -71,27 +70,31 @@ class _CreateActivityPageState extends State<CreateActivityPage> {
 
   void guardarAtividade() {
     final nome = nomeController.text.trim();
-    final data = dataController.text.trim();
-    final hora = horaController.text.trim();
     final local = localController.text.trim();
 
-    if (nome.isEmpty || data.isEmpty || hora.isEmpty || local.isEmpty) {
+    if (nome.isEmpty ||
+        local.isEmpty ||
+        dataSelecionada == null ||
+        horaSelecionada == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Preenche todos os campos.'),
-        ),
+        const SnackBar(content: Text('Preenche todos os campos.')),
       );
       return;
     }
 
-    final atividade = Activity(
-      nome: nome,
-      data: data,
-      hora: hora,
-      local: local,
+    final dataHora = DateTime(
+      dataSelecionada!.year,
+      dataSelecionada!.month,
+      dataSelecionada!.day,
+      horaSelecionada!.hour,
+      horaSelecionada!.minute,
     );
 
-    Navigator.pop(context, atividade);
+    Navigator.pop(context, {
+      'nome': nome,
+      'dataHora': dataHora,
+      'local': local,
+    });
   }
 
   @override
@@ -156,9 +159,7 @@ class _CreateActivityPageState extends State<CreateActivityPage> {
                   child: SizedBox(
                     height: 52,
                     child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
+                      onPressed: () => Navigator.pop(context),
                       child: const Text('Cancelar'),
                     ),
                   ),

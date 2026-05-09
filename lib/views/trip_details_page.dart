@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/trip.dart';
+import '../data/database/app_database.dart';
+import '../data/database/database_provider.dart';
 import 'trip_tasks_page.dart';
 import 'trip_itinerary_page.dart';
 import 'trip_expenses_page.dart';
@@ -9,28 +10,37 @@ class TripDetailsPage extends StatelessWidget {
 
   const TripDetailsPage({super.key, required this.trip});
 
+  String formatarData(DateTime data) {
+    final dia = data.day.toString().padLeft(2, '0');
+    final mes = data.month.toString().padLeft(2, '0');
+    final ano = data.year.toString();
+    return '$dia/$mes/$ano';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(trip.nome)),
+      appBar: AppBar(title: Text(trip.name)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              trip.nome,
+              trip.name,
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            Text('Datas: ${trip.inicioFormatado} - ${trip.fimFormatado}'),
+            Text(
+              'Datas: ${formatarData(trip.startDate)} - ${formatarData(trip.endDate)}',
+            ),
             const SizedBox(height: 10),
             const Text(
               'Descrição:',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 5),
-            Text(trip.descricao),
+            Text(trip.description ?? 'Sem descrição.'),
             const SizedBox(height: 20),
 
             const Text(
@@ -39,19 +49,7 @@ class TripDetailsPage extends StatelessWidget {
             ),
             const SizedBox(height: 10),
 
-            if (trip.participantes.isEmpty)
-              const Text('Sem participantes adicionados.')
-            else
-              Column(
-                children: trip.participantes.map((participante) {
-                  return Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.person),
-                      title: Text(participante),
-                    ),
-                  );
-                }).toList(),
-              ),
+            const Text('Participantes ainda não ligados à base de dados.'),
 
             const SizedBox(height: 20),
             const Divider(),
@@ -72,6 +70,7 @@ class TripDetailsPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
+
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -87,6 +86,7 @@ class TripDetailsPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
+
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -94,7 +94,9 @@ class TripDetailsPage extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => TripExpensesPage(trip: trip),
+                      builder: (context) => TripExpensesPage(
+                        trip: trip,
+                      ),
                     ),
                   );
                 },
