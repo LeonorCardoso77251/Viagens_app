@@ -21,6 +21,18 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
       'PRIMARY KEY AUTOINCREMENT',
     ),
   );
+  static const VerificationMeta _firebaseUidMeta = const VerificationMeta(
+    'firebaseUid',
+  );
+  @override
+  late final GeneratedColumn<String> firebaseUid = GeneratedColumn<String>(
+    'firebase_uid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
@@ -48,16 +60,16 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     requiredDuringInsert: true,
     $customConstraints: 'UNIQUE NOT NULL',
   );
-  static const VerificationMeta _passwordHashMeta = const VerificationMeta(
-    'passwordHash',
+  static const VerificationMeta _photoUrlMeta = const VerificationMeta(
+    'photoUrl',
   );
   @override
-  late final GeneratedColumn<String> passwordHash = GeneratedColumn<String>(
-    'password_hash',
+  late final GeneratedColumn<String> photoUrl = GeneratedColumn<String>(
+    'photo_url',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
@@ -74,9 +86,10 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    firebaseUid,
     name,
     email,
-    passwordHash,
+    photoUrl,
     createdAt,
   ];
   @override
@@ -94,6 +107,17 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
+    if (data.containsKey('firebase_uid')) {
+      context.handle(
+        _firebaseUidMeta,
+        firebaseUid.isAcceptableOrUnknown(
+          data['firebase_uid']!,
+          _firebaseUidMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_firebaseUidMeta);
+    }
     if (data.containsKey('name')) {
       context.handle(
         _nameMeta,
@@ -110,16 +134,11 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     } else if (isInserting) {
       context.missing(_emailMeta);
     }
-    if (data.containsKey('password_hash')) {
+    if (data.containsKey('photo_url')) {
       context.handle(
-        _passwordHashMeta,
-        passwordHash.isAcceptableOrUnknown(
-          data['password_hash']!,
-          _passwordHashMeta,
-        ),
+        _photoUrlMeta,
+        photoUrl.isAcceptableOrUnknown(data['photo_url']!, _photoUrlMeta),
       );
-    } else if (isInserting) {
-      context.missing(_passwordHashMeta);
     }
     if (data.containsKey('created_at')) {
       context.handle(
@@ -140,6 +159,10 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
         DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
+      firebaseUid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}firebase_uid'],
+      )!,
       name: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}name'],
@@ -148,10 +171,10 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
         DriftSqlType.string,
         data['${effectivePrefix}email'],
       )!,
-      passwordHash: attachedDatabase.typeMapping.read(
+      photoUrl: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}password_hash'],
-      )!,
+        data['${effectivePrefix}photo_url'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -167,24 +190,29 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
 
 class User extends DataClass implements Insertable<User> {
   final int id;
+  final String firebaseUid;
   final String name;
   final String email;
-  final String passwordHash;
+  final String? photoUrl;
   final DateTime createdAt;
   const User({
     required this.id,
+    required this.firebaseUid,
     required this.name,
     required this.email,
-    required this.passwordHash,
+    this.photoUrl,
     required this.createdAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
+    map['firebase_uid'] = Variable<String>(firebaseUid);
     map['name'] = Variable<String>(name);
     map['email'] = Variable<String>(email);
-    map['password_hash'] = Variable<String>(passwordHash);
+    if (!nullToAbsent || photoUrl != null) {
+      map['photo_url'] = Variable<String>(photoUrl);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -192,9 +220,12 @@ class User extends DataClass implements Insertable<User> {
   UsersCompanion toCompanion(bool nullToAbsent) {
     return UsersCompanion(
       id: Value(id),
+      firebaseUid: Value(firebaseUid),
       name: Value(name),
       email: Value(email),
-      passwordHash: Value(passwordHash),
+      photoUrl: photoUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(photoUrl),
       createdAt: Value(createdAt),
     );
   }
@@ -206,9 +237,10 @@ class User extends DataClass implements Insertable<User> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return User(
       id: serializer.fromJson<int>(json['id']),
+      firebaseUid: serializer.fromJson<String>(json['firebaseUid']),
       name: serializer.fromJson<String>(json['name']),
       email: serializer.fromJson<String>(json['email']),
-      passwordHash: serializer.fromJson<String>(json['passwordHash']),
+      photoUrl: serializer.fromJson<String?>(json['photoUrl']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -217,34 +249,38 @@ class User extends DataClass implements Insertable<User> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
+      'firebaseUid': serializer.toJson<String>(firebaseUid),
       'name': serializer.toJson<String>(name),
       'email': serializer.toJson<String>(email),
-      'passwordHash': serializer.toJson<String>(passwordHash),
+      'photoUrl': serializer.toJson<String?>(photoUrl),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
 
   User copyWith({
     int? id,
+    String? firebaseUid,
     String? name,
     String? email,
-    String? passwordHash,
+    Value<String?> photoUrl = const Value.absent(),
     DateTime? createdAt,
   }) => User(
     id: id ?? this.id,
+    firebaseUid: firebaseUid ?? this.firebaseUid,
     name: name ?? this.name,
     email: email ?? this.email,
-    passwordHash: passwordHash ?? this.passwordHash,
+    photoUrl: photoUrl.present ? photoUrl.value : this.photoUrl,
     createdAt: createdAt ?? this.createdAt,
   );
   User copyWithCompanion(UsersCompanion data) {
     return User(
       id: data.id.present ? data.id.value : this.id,
+      firebaseUid: data.firebaseUid.present
+          ? data.firebaseUid.value
+          : this.firebaseUid,
       name: data.name.present ? data.name.value : this.name,
       email: data.email.present ? data.email.value : this.email,
-      passwordHash: data.passwordHash.present
-          ? data.passwordHash.value
-          : this.passwordHash,
+      photoUrl: data.photoUrl.present ? data.photoUrl.value : this.photoUrl,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -253,77 +289,87 @@ class User extends DataClass implements Insertable<User> {
   String toString() {
     return (StringBuffer('User(')
           ..write('id: $id, ')
+          ..write('firebaseUid: $firebaseUid, ')
           ..write('name: $name, ')
           ..write('email: $email, ')
-          ..write('passwordHash: $passwordHash, ')
+          ..write('photoUrl: $photoUrl, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, email, passwordHash, createdAt);
+  int get hashCode =>
+      Object.hash(id, firebaseUid, name, email, photoUrl, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is User &&
           other.id == this.id &&
+          other.firebaseUid == this.firebaseUid &&
           other.name == this.name &&
           other.email == this.email &&
-          other.passwordHash == this.passwordHash &&
+          other.photoUrl == this.photoUrl &&
           other.createdAt == this.createdAt);
 }
 
 class UsersCompanion extends UpdateCompanion<User> {
   final Value<int> id;
+  final Value<String> firebaseUid;
   final Value<String> name;
   final Value<String> email;
-  final Value<String> passwordHash;
+  final Value<String?> photoUrl;
   final Value<DateTime> createdAt;
   const UsersCompanion({
     this.id = const Value.absent(),
+    this.firebaseUid = const Value.absent(),
     this.name = const Value.absent(),
     this.email = const Value.absent(),
-    this.passwordHash = const Value.absent(),
+    this.photoUrl = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   UsersCompanion.insert({
     this.id = const Value.absent(),
+    required String firebaseUid,
     required String name,
     required String email,
-    required String passwordHash,
+    this.photoUrl = const Value.absent(),
     this.createdAt = const Value.absent(),
-  }) : name = Value(name),
-       email = Value(email),
-       passwordHash = Value(passwordHash);
+  }) : firebaseUid = Value(firebaseUid),
+       name = Value(name),
+       email = Value(email);
   static Insertable<User> custom({
     Expression<int>? id,
+    Expression<String>? firebaseUid,
     Expression<String>? name,
     Expression<String>? email,
-    Expression<String>? passwordHash,
+    Expression<String>? photoUrl,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (firebaseUid != null) 'firebase_uid': firebaseUid,
       if (name != null) 'name': name,
       if (email != null) 'email': email,
-      if (passwordHash != null) 'password_hash': passwordHash,
+      if (photoUrl != null) 'photo_url': photoUrl,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
 
   UsersCompanion copyWith({
     Value<int>? id,
+    Value<String>? firebaseUid,
     Value<String>? name,
     Value<String>? email,
-    Value<String>? passwordHash,
+    Value<String?>? photoUrl,
     Value<DateTime>? createdAt,
   }) {
     return UsersCompanion(
       id: id ?? this.id,
+      firebaseUid: firebaseUid ?? this.firebaseUid,
       name: name ?? this.name,
       email: email ?? this.email,
-      passwordHash: passwordHash ?? this.passwordHash,
+      photoUrl: photoUrl ?? this.photoUrl,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -334,14 +380,17 @@ class UsersCompanion extends UpdateCompanion<User> {
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
+    if (firebaseUid.present) {
+      map['firebase_uid'] = Variable<String>(firebaseUid.value);
+    }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
     if (email.present) {
       map['email'] = Variable<String>(email.value);
     }
-    if (passwordHash.present) {
-      map['password_hash'] = Variable<String>(passwordHash.value);
+    if (photoUrl.present) {
+      map['photo_url'] = Variable<String>(photoUrl.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -353,9 +402,10 @@ class UsersCompanion extends UpdateCompanion<User> {
   String toString() {
     return (StringBuffer('UsersCompanion(')
           ..write('id: $id, ')
+          ..write('firebaseUid: $firebaseUid, ')
           ..write('name: $name, ')
           ..write('email: $email, ')
-          ..write('passwordHash: $passwordHash, ')
+          ..write('photoUrl: $photoUrl, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -3547,17 +3597,19 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 typedef $$UsersTableCreateCompanionBuilder =
     UsersCompanion Function({
       Value<int> id,
+      required String firebaseUid,
       required String name,
       required String email,
-      required String passwordHash,
+      Value<String?> photoUrl,
       Value<DateTime> createdAt,
     });
 typedef $$UsersTableUpdateCompanionBuilder =
     UsersCompanion Function({
       Value<int> id,
+      Value<String> firebaseUid,
       Value<String> name,
       Value<String> email,
-      Value<String> passwordHash,
+      Value<String?> photoUrl,
       Value<DateTime> createdAt,
     });
 
@@ -3715,6 +3767,11 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get firebaseUid => $composableBuilder(
+    column: $table.firebaseUid,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get name => $composableBuilder(
     column: $table.name,
     builder: (column) => ColumnFilters(column),
@@ -3725,8 +3782,8 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get passwordHash => $composableBuilder(
-    column: $table.passwordHash,
+  ColumnFilters<String> get photoUrl => $composableBuilder(
+    column: $table.photoUrl,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3925,6 +3982,11 @@ class $$UsersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get firebaseUid => $composableBuilder(
+    column: $table.firebaseUid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get name => $composableBuilder(
     column: $table.name,
     builder: (column) => ColumnOrderings(column),
@@ -3935,8 +3997,8 @@ class $$UsersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get passwordHash => $composableBuilder(
-    column: $table.passwordHash,
+  ColumnOrderings<String> get photoUrl => $composableBuilder(
+    column: $table.photoUrl,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3958,16 +4020,19 @@ class $$UsersTableAnnotationComposer
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
+  GeneratedColumn<String> get firebaseUid => $composableBuilder(
+    column: $table.firebaseUid,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
 
   GeneratedColumn<String> get email =>
       $composableBuilder(column: $table.email, builder: (column) => column);
 
-  GeneratedColumn<String> get passwordHash => $composableBuilder(
-    column: $table.passwordHash,
-    builder: (column) => column,
-  );
+  GeneratedColumn<String> get photoUrl =>
+      $composableBuilder(column: $table.photoUrl, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4186,29 +4251,33 @@ class $$UsersTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
+                Value<String> firebaseUid = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> email = const Value.absent(),
-                Value<String> passwordHash = const Value.absent(),
+                Value<String?> photoUrl = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => UsersCompanion(
                 id: id,
+                firebaseUid: firebaseUid,
                 name: name,
                 email: email,
-                passwordHash: passwordHash,
+                photoUrl: photoUrl,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
+                required String firebaseUid,
                 required String name,
                 required String email,
-                required String passwordHash,
+                Value<String?> photoUrl = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => UsersCompanion.insert(
                 id: id,
+                firebaseUid: firebaseUid,
                 name: name,
                 email: email,
-                passwordHash: passwordHash,
+                photoUrl: photoUrl,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0

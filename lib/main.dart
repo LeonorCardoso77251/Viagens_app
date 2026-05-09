@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'views/welcome_page.dart';
-import 'data/database/database_provider.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -12,8 +11,6 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
-  await appDatabase.usersDao.ensureDemoUser();
 
   runApp(const ViagensApp());
 }
