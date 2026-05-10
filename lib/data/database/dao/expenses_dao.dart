@@ -13,6 +13,13 @@ class ExpenseSplitInput {
   const ExpenseSplitInput({required this.userId, required this.amountCents});
 }
 
+class ExpenseWithPayer {
+  final Expense expense;
+  final User payer;
+
+  ExpenseWithPayer({required this.expense, required this.payer});
+}
+
 @DriftAccessor(tables: [Expenses, ExpenseSplits])
 class ExpensesDao extends DatabaseAccessor<AppDatabase>
     with _$ExpensesDaoMixin {
@@ -103,5 +110,23 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
       ..where(expenses.tripId.equals(tripId));
 
     return query.watchSingle().map((row) => row.read(totalExpression) ?? 0);
+  }
+
+  Stream<List<ExpenseWithPayer>> watchExpensesWithPayerForTrip(int tripId) {
+    final query =
+        select(
+            expenses,
+          ).join([innerJoin(users, users.id.equalsExp(expenses.paidBy))])
+          ..where(expenses.tripId.equals(tripId))
+          ..orderBy([OrderingTerm.desc(expenses.createdAt)]);
+
+    return query.watch().map((rows) {
+      return rows.map((row) {
+        return ExpenseWithPayer(
+          expense: row.readTable(expenses),
+          payer: row.readTable(users),
+        );
+      }).toList();
+    });
   }
 }

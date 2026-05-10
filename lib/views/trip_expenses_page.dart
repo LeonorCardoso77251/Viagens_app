@@ -10,34 +10,20 @@ import 'create_expense_page.dart';
 class TripExpensesPage extends StatefulWidget {
   final Trip trip;
 
-  const TripExpensesPage({
-    super.key,
-    required this.trip,
-  });
+  const TripExpensesPage({super.key, required this.trip});
 
   @override
-  State<TripExpensesPage> createState() =>
-      _TripExpensesPageState();
+  State<TripExpensesPage> createState() => _TripExpensesPageState();
 }
 
-class _TripExpensesPageState
-    extends State<TripExpensesPage> {
-
-  ExpensesDao get expensesDao =>
-      appDatabase.expensesDao;
+class _TripExpensesPageState extends State<TripExpensesPage> {
+  ExpensesDao get expensesDao => appDatabase.expensesDao;
 
   Future<void> abrirCriarDespesa() async {
-
-    final novaDespesa =
-    await Navigator.push<
-        Map<String, dynamic>
-    >(
+    final novaDespesa = await Navigator.push<Map<String, dynamic>>(
       context,
 
-      MaterialPageRoute(
-        builder: (context) =>
-        const CreateExpensePage(),
-      ),
+      MaterialPageRoute(builder: (context) => const CreateExpensePage()),
     );
 
     if (novaDespesa == null) {
@@ -45,57 +31,37 @@ class _TripExpensesPageState
     }
 
     // UTILIZADOR FIREBASE
-    final firebaseUser =
-        FirebaseAuth.instance.currentUser;
+    final firebaseUser = FirebaseAuth.instance.currentUser;
 
     if (firebaseUser == null) {
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Utilizador não autenticado.',
-          ),
-        ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Utilizador não autenticado.')),
       );
 
       return;
     }
 
     // UTILIZADOR SQLITE
-    final user =
-    await appDatabase.usersDao
-        .getUserByFirebaseUid(
+    final user = await appDatabase.usersDao.getUserByFirebaseUid(
       firebaseUser.uid,
     );
 
     if (user == null) {
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Erro ao carregar utilizador.',
-          ),
-        ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erro ao carregar utilizador.')),
       );
 
       return;
     }
 
-    final amountCents =
-    novaDespesa['amountCents'] as int;
+    final amountCents = novaDespesa['amountCents'] as int;
 
-    final title =
-    novaDespesa['title'] as String;
+    final title = novaDespesa['title'] as String;
 
-    final description =
-    novaDespesa['description']
-    as String?;
+    final description = novaDespesa['description'] as String?;
 
     // CRIAR DESPESA
     await expensesDao.createExpense(
-
       tripId: widget.trip.id,
 
       paidBy: user.id,
@@ -106,76 +72,43 @@ class _TripExpensesPageState
 
       amountCents: amountCents,
 
-      splits: [
-
-        ExpenseSplitInput(
-          userId: user.id,
-
-          amountCents:
-          amountCents,
-        ),
-      ],
+      splits: [ExpenseSplitInput(userId: user.id, amountCents: amountCents)],
     );
   }
 
   String eurosFromCents(int cents) {
-
-    return
-      '€${(cents / 100).toStringAsFixed(2)}';
+    return '€${(cents / 100).toStringAsFixed(2)}';
   }
 
   @override
   Widget build(BuildContext context) {
-
     final tripId = widget.trip.id;
 
     return Scaffold(
-
-      appBar: AppBar(
-        title: Text(
-          'Despesas - ${widget.trip.name}',
-        ),
-      ),
+      appBar: AppBar(title: Text('Despesas - ${widget.trip.name}')),
 
       body: Column(
         children: [
-
           // TOTAL
           StreamBuilder<int>(
+            stream: expensesDao.watchTotalExpensesForTrip(tripId),
 
-            stream: expensesDao
-                .watchTotalExpensesForTrip(
-              tripId,
-            ),
-
-            builder: (
-                context,
-                snapshot,
-                ) {
-
-              final totalCents =
-                  snapshot.data ?? 0;
+            builder: (context, snapshot) {
+              final totalCents = snapshot.data ?? 0;
 
               return Container(
-
                 width: double.infinity,
 
-                padding:
-                const EdgeInsets.all(
-                  16,
-                ),
+                padding: const EdgeInsets.all(16),
 
-                color:
-                Colors.blue.shade50,
+                color: Colors.blue.shade50,
 
                 child: Text(
                   'Total: ${eurosFromCents(totalCents)}',
 
-                  style:
-                  const TextStyle(
+                  style: const TextStyle(
                     fontSize: 18,
-                    fontWeight:
-                    FontWeight.bold,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               );
@@ -184,93 +117,53 @@ class _TripExpensesPageState
 
           // LISTA DESPESAS
           Expanded(
+            child: StreamBuilder<List<ExpenseWithPayer>>(
+              stream: expensesDao.watchExpensesWithPayerForTrip(tripId),
 
-            child:
-            StreamBuilder<List<Expense>>(
-
-              stream: expensesDao
-                  .watchExpensesForTrip(
-                tripId,
-              ),
-
-              builder: (
-                  context,
-                  snapshot,
-                  ) {
-
+              builder: (context, snapshot) {
                 // LOADING
-                if (snapshot.connectionState ==
-                    ConnectionState.waiting) {
-
-                  return const Center(
-                    child:
-                    CircularProgressIndicator(),
-                  );
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
                 }
 
-                final despesas =
-                    snapshot.data ?? [];
+                final despesas = snapshot.data ?? [];
 
                 // SEM DESPESAS
                 if (despesas.isEmpty) {
-
                   return const Center(
-                    child: Text(
-                      'Nenhuma despesa registada.',
-                    ),
+                    child: Text('Nenhuma despesa registada.'),
                   );
                 }
 
                 // LISTA
                 return ListView.builder(
+                  itemCount: despesas.length,
 
-                  itemCount:
-                  despesas.length,
-
-                  itemBuilder: (
-                      context,
-                      index,
-                      ) {
-
-                    final despesa =
-                    despesas[index];
+                  itemBuilder: (context, index) {
+                    final items = despesas[index];
+                    final despesa = items.expense;
+                    final payer = items.payer;
 
                     return Card(
-
-                      margin:
-                      const EdgeInsets.all(
-                        10,
-                      ),
+                      margin: const EdgeInsets.all(10),
 
                       child: ListTile(
-
-                        title:
-                        Text(despesa.title),
+                        title: Text(despesa.title),
 
                         subtitle: Text(
-
                           [
-                            if (despesa.description !=
-                                null &&
-                                despesa.description!
-                                    .isNotEmpty)
+                            if (despesa.description != null &&
+                                despesa.description!.isNotEmpty)
                               despesa.description!,
 
-                            'Pago por: ${despesa.paidBy}',
+                            'Pago por: ${payer.name}',
                           ].join('\n'),
                         ),
 
                         trailing: Text(
+                          eurosFromCents(despesa.amountCents),
 
-                          eurosFromCents(
-                            despesa.amountCents,
-                          ),
-
-                          style:
-                          const TextStyle(
-                            fontWeight:
-                            FontWeight.bold,
-                          ),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
                     );
@@ -282,14 +175,10 @@ class _TripExpensesPageState
         ],
       ),
 
-      floatingActionButton:
-      FloatingActionButton(
+      floatingActionButton: FloatingActionButton(
+        onPressed: abrirCriarDespesa,
 
-        onPressed:
-        abrirCriarDespesa,
-
-        child:
-        const Icon(Icons.add),
+        child: const Icon(Icons.add),
       ),
     );
   }
