@@ -5,6 +5,13 @@ import '../tables/tasks.dart';
 
 part 'tasks_dao.g.dart';
 
+class TaskWithAssignee {
+  final Task task;
+  final User assignee;
+
+  TaskWithAssignee({required this.task, required this.assignee});
+}
+
 @DriftAccessor(tables: [Tasks])
 class TasksDao extends DatabaseAccessor<AppDatabase> with _$TasksDaoMixin {
   TasksDao(super.attachedDatabase);
@@ -29,26 +36,41 @@ class TasksDao extends DatabaseAccessor<AppDatabase> with _$TasksDaoMixin {
 
   Future<List<Task>> getTasksForTrip(int tripId) {
     return (select(tasks)
-      ..where((t) => t.tripId.equals(tripId))
-      ..orderBy([(t) => OrderingTerm(expression: t.createdAt)]))
+          ..where((t) => t.tripId.equals(tripId))
+          ..orderBy([(t) => OrderingTerm(expression: t.createdAt)]))
         .get();
   }
 
   Stream<List<Task>> watchTasksForTrip(int tripId) {
     return (select(tasks)
-      ..where((t) => t.tripId.equals(tripId))
-      ..orderBy([(t) => OrderingTerm(expression: t.createdAt)]))
+          ..where((t) => t.tripId.equals(tripId))
+          ..orderBy([(t) => OrderingTerm(expression: t.createdAt)]))
         .watch();
+  }
+
+  Stream<List<TaskWithAssignee>> watchTasksWithAssigneeForTrip(int tripId) {
+    final query =
+        select(
+            tasks,
+          ).join([innerJoin(users, users.id.equalsExp(tasks.assignedTo))])
+          ..where(tasks.tripId.equals(tripId))
+          ..orderBy([OrderingTerm.desc(tasks.createdAt)]);
+
+    return query.watch().map((rows) {
+      return rows.map((row) {
+        return TaskWithAssignee(
+          task: row.readTable(tasks),
+          assignee: row.readTable(users),
+        );
+      }).toList();
+    });
   }
 
   Future<List<Task>> getTasksForUser(int userId) {
     return (select(tasks)..where((t) => t.assignedTo.equals(userId))).get();
   }
 
-  Future<void> updateTaskStatus({
-    required int taskId,
-    required String status,
-  }) {
+  Future<void> updateTaskStatus({required int taskId, required String status}) {
     return (update(tasks)..where((t) => t.id.equals(taskId))).write(
       TasksCompanion(status: Value(status)),
     );
@@ -64,11 +86,13 @@ class TasksDao extends DatabaseAccessor<AppDatabase> with _$TasksDaoMixin {
     return (update(tasks)..where((t) => t.id.equals(taskId))).write(
       TasksCompanion(
         title: title != null ? Value(title) : const Value.absent(),
-        description:
-        description != null ? Value(description) : const Value.absent(),
+        description: description != null
+            ? Value(description)
+            : const Value.absent(),
         status: status != null ? Value(status) : const Value.absent(),
-        assignedTo:
-        assignedTo != null ? Value(assignedTo) : const Value.absent(),
+        assignedTo: assignedTo != null
+            ? Value(assignedTo)
+            : const Value.absent(),
       ),
     );
   }

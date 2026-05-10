@@ -3,25 +3,23 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../data/database/app_database.dart';
 import '../data/database/database_provider.dart';
+import '../data/database/dao/tasks_dao.dart';
+
+import '../widgets/tasks/task_card.dart';
+import '../widgets/tasks/task_edit_dialog.dart';
 
 import 'create_task_page.dart';
 
 class TripTasksPage extends StatefulWidget {
   final Trip trip;
 
-  const TripTasksPage({
-    super.key,
-    required this.trip,
-  });
+  const TripTasksPage({super.key, required this.trip});
 
   @override
-  State<TripTasksPage> createState() =>
-      _TripTasksPageState();
+  State<TripTasksPage> createState() => _TripTasksPageState();
 }
 
-class _TripTasksPageState
-    extends State<TripTasksPage> {
-
+class _TripTasksPageState extends State<TripTasksPage> {
   late int _currentUserId;
 
   bool _userLoaded = false;
@@ -34,19 +32,15 @@ class _TripTasksPageState
   }
 
   Future<void> _loadCurrentUser() async {
-
     // UTILIZADOR FIREBASE
-    final firebaseUser =
-        FirebaseAuth.instance.currentUser;
+    final firebaseUser = FirebaseAuth.instance.currentUser;
 
     if (firebaseUser == null) {
       return;
     }
 
     // UTILIZADOR SQLITE
-    final user =
-    await appDatabase.usersDao
-        .getUserByFirebaseUid(
+    final user = await appDatabase.usersDao.getUserByFirebaseUid(
       firebaseUser.uid,
     );
 
@@ -55,7 +49,6 @@ class _TripTasksPageState
     }
 
     setState(() {
-
       _currentUserId = user.id;
 
       _userLoaded = true;
@@ -63,59 +56,58 @@ class _TripTasksPageState
   }
 
   Future<void> abrirCriarTarefa() async {
-
     await Navigator.push(
       context,
 
       MaterialPageRoute(
-        builder: (context) =>
-            CreateTaskPage(
+        builder: (context) => CreateTaskPage(
+          tripId: widget.trip.id,
 
-              tripId:
-              widget.trip.id,
+          currentUserId: _currentUserId,
 
-              currentUserId:
-              _currentUserId,
-
-              participantes:
-              const [],
-            ),
+          participantes: const [],
+        ),
       ),
     );
 
     setState(() {});
   }
 
-  Future<void> _alternarConclusao(
-      Task tarefa,
-      ) async {
+  Future<void> _abrirEditarTarefa(Task tarefa) async {
+    final result = await showDialog<EditTaskResult>(
+      context: context,
+      builder: (context) {
+        return EditTaskDialog(task: tarefa);
+      },
+    );
 
-    final newStatus =
-    tarefa.status == 'done'
-        ? 'pending'
-        : 'done';
+    if (result == null) return;
 
-    await appDatabase.tasksDao
-        .updateTaskStatus(
+    await appDatabase.tasksDao.updateTask(
+      taskId: tarefa.id,
+      title: result.title,
+      description: result.description,
+      status: result.status,
+      assignedTo: result.assignedTo,
+    );
+  }
 
+  Future<void> _alternarConclusao(Task tarefa) async {
+    final newStatus = tarefa.status == 'done' ? 'pending' : 'done';
+
+    await appDatabase.tasksDao.updateTaskStatus(
       taskId: tarefa.id,
 
       status: newStatus,
     );
   }
 
-  Future<void> _removerTarefa(
-      int taskId,
-      ) async {
-
-    await appDatabase.tasksDao
-        .deleteTask(taskId);
+  Future<void> _removerTarefa(int taskId) async {
+    await appDatabase.tasksDao.deleteTask(taskId);
   }
 
   String statusLabel(String status) {
-
     switch (status) {
-
       case 'in_progress':
         return 'Em progresso';
 
@@ -130,170 +122,74 @@ class _TripTasksPageState
 
   @override
   Widget build(BuildContext context) {
-
     // LOADING USER
     if (!_userLoaded) {
-
       return Scaffold(
+        appBar: AppBar(title: Text('Tarefas - ${widget.trip.name}')),
 
-        appBar: AppBar(
-          title: Text(
-            'Tarefas - ${widget.trip.name}',
-          ),
-        ),
-
-        body: const Center(
-          child:
-          CircularProgressIndicator(),
-        ),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
+      appBar: AppBar(title: Text('Tarefas - ${widget.trip.name}')),
 
-      appBar: AppBar(
-        title: Text(
-          'Tarefas - ${widget.trip.name}',
-        ),
-      ),
-
-      body: StreamBuilder<List<Task>>(
-
-        stream: appDatabase
-            .tasksDao
-            .watchTasksForTrip(
+      body: StreamBuilder<List<TaskWithAssignee>>(
+        stream: appDatabase.tasksDao.watchTasksWithAssigneeForTrip(
           widget.trip.id,
         ),
 
-        builder: (
-            context,
-            snapshot,
-            ) {
-
+        builder: (context, snapshot) {
           // LOADING
-          if (snapshot.connectionState ==
-              ConnectionState.waiting) {
-
-            return const Center(
-              child:
-              CircularProgressIndicator(),
-            );
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
           }
 
           // ERRO
           if (snapshot.hasError) {
-
-            return Center(
-              child: Text(
-                'Erro: ${snapshot.error}',
-              ),
-            );
+            return Center(child: Text('Erro: ${snapshot.error}'));
           }
 
-          final tasks =
-              snapshot.data ?? [];
+          final tasks = snapshot.data ?? [];
 
           // SEM TAREFAS
           if (tasks.isEmpty) {
-
-            return const Center(
-              child: Text(
-                'Nenhuma tarefa adicionada.',
-              ),
-            );
+            return const Center(child: Text('Nenhuma tarefa adicionada.'));
           }
 
           // LISTA
           return ListView.builder(
-
             itemCount: tasks.length,
 
-            itemBuilder: (
-                context,
-                index,
-                ) {
+            itemBuilder: (context, index) {
+              final item = tasks[index];
+              final tarefa = item.task;
+              final assignee = item.assignee;
 
-              final tarefa =
-              tasks[index];
+              final isDone = tarefa.status == 'done';
 
-              final isDone =
-                  tarefa.status == 'done';
-
-              return Card(
-
-                margin:
-                const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-
-                child: ListTile(
-
-                  leading: Checkbox(
-
-                    value: isDone,
-
-                    onChanged: (_) {
-                      _alternarConclusao(
-                        tarefa,
-                      );
-                    },
-                  ),
-
-                  title: Text(
-
-                    tarefa.title,
-
-                    style: TextStyle(
-                      decoration: isDone
-                          ? TextDecoration
-                          .lineThrough
-                          : TextDecoration.none,
-                    ),
-                  ),
-
-                  subtitle: Text(
-
-                    [
-                      if (tarefa.description !=
-                          null &&
-                          tarefa.description!
-                              .isNotEmpty)
-                        tarefa.description!,
-
-                      'Estado: ${statusLabel(tarefa.status)}',
-
-                      'Responsável: ${tarefa.assignedTo}',
-                    ].join('\n'),
-                  ),
-
-                  trailing: IconButton(
-
-                    icon: const Icon(
-                      Icons.delete,
-                    ),
-
-                    onPressed: () {
-                      _removerTarefa(
-                        tarefa.id,
-                      );
-                    },
-                  ),
-                ),
+              return TaskCard(
+                task: tarefa,
+                assigneeName: assignee.name,
+                onToggleDone: () {
+                  _alternarConclusao(tarefa);
+                },
+                onEdit: () {
+                  _abrirEditarTarefa(tarefa);
+                },
+                onDelete: () {
+                  _removerTarefa(tarefa.id);
+                },
               );
             },
           );
         },
       ),
 
-      floatingActionButton:
-      FloatingActionButton(
+      floatingActionButton: FloatingActionButton(
+        onPressed: abrirCriarTarefa,
 
-        onPressed:
-        abrirCriarTarefa,
-
-        child:
-        const Icon(Icons.add),
+        child: const Icon(Icons.add),
       ),
     );
   }
