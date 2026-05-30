@@ -86,7 +86,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
             decoration: const InputDecoration(labelText: 'Descrição'),
           ),
           DropdownButtonFormField<String>(
-            value: _status,
+            initialValue: _status,
             decoration: const InputDecoration(labelText: 'Estado'),
             items: const [
               DropdownMenuItem(value: 'pending', child: Text('Pendente')),

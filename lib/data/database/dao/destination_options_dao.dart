@@ -2,15 +2,29 @@ import 'package:drift/drift.dart';
 
 import '../app_database.dart';
 import '../tables/destination_options.dart';
+import '../tables/trips.dart';
 import '../tables/votes.dart';
 
 part 'destination_options_dao.g.dart';
 
-@DriftAccessor(tables: [DestinationOptions, Votes])
+class DestinationWithVotes {
+  final DestinationOption destination;
+  final int voteCount;
+  final bool hasVoted;
+
+  DestinationWithVotes({
+    required this.destination,
+    required this.voteCount,
+    required this.hasVoted,
+  });
+}
+
+@DriftAccessor(tables: [DestinationOptions, Votes, Trips])
 class DestinationOptionsDao extends DatabaseAccessor<AppDatabase>
     with _$DestinationOptionsDaoMixin {
   DestinationOptionsDao(super.attachedDatabase);
 
+  // ADICIONAR OPÇÃO DE DESTINO
   Future<DestinationOption> addDestinationOption({
     required int tripId,
     required String destinationName,
@@ -27,72 +41,98 @@ class DestinationOptionsDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
-  Future<List<DestinationOption>> getDestinationsForTrip(int tripId) {
-    return (select(destinationOptions)
-          ..where((d) => d.tripId.equals(tripId))
-          ..orderBy([(d) => OrderingTerm(expression: d.destinationName)]))
-        .get();
+  // DESTINOS COM VOTOS (stream único para a UI)
+  Stream<List<DestinationWithVotes>> watchDestinationsWithVotes({
+    required int tripId,
+    required int currentUserId,
+  }) {
+    final voteCount = votes.id.count();
+    final hasVoted = votes.userId.equals(currentUserId).cast<bool>();
+
+    final query =
+        select(destinationOptions).join([
+            leftOuterJoin(
+              votes,
+              votes.destinationId.equalsExp(destinationOptions.id),
+            ),
+          ])
+          ..where(destinationOptions.tripId.equals(tripId))
+          ..addColumns([voteCount, hasVoted])
+          ..groupBy([destinationOptions.id])
+          ..orderBy([
+            OrderingTerm(expression: destinationOptions.destinationName),
+          ]);
+
+    return query.watch().map((rows) {
+      return rows.map((row) {
+        return DestinationWithVotes(
+          destination: row.readTable(destinationOptions),
+          voteCount: row.read(voteCount) ?? 0,
+          hasVoted: row.read(hasVoted) ?? false,
+        );
+      }).toList();
+    });
   }
 
-  Stream<List<DestinationOption>> watchDestinationsForTrip(int tripId) {
-    return (select(destinationOptions)
-          ..where((d) => d.tripId.equals(tripId))
-          ..orderBy([(d) => OrderingTerm(expression: d.destinationName)]))
-        .watch();
-  }
-
+  // VOTAR (um voto por viagem — remove voto anterior se existir)
   Future<void> voteForDestination({
+    required int tripId,
     required int destinationId,
     required int userId,
   }) async {
-    await into(votes).insert(
-      VotesCompanion.insert(destinationId: destinationId, userId: userId),
-      mode: InsertMode.insertOrIgnore,
-    );
+    await transaction(() async {
+      // REMOVER VOTO ANTERIOR nesta viagem
+      await (delete(
+        votes,
+      )..where((v) => v.tripId.equals(tripId) & v.userId.equals(userId))).go();
+
+      // INSERIR NOVO VOTO
+      await into(votes).insert(
+        VotesCompanion.insert(
+          tripId: tripId,
+          destinationId: destinationId,
+          userId: userId,
+        ),
+      );
+    });
   }
 
-  Future<void> removeVote({
-    required int destinationId,
-    required int userId,
-  }) async {
-    await (delete(votes)..where(
-          (v) =>
-              v.destinationId.equals(destinationId) & v.userId.equals(userId),
-        ))
-        .go();
-  }
+  // FECHAR VOTAÇÃO — define o destino vencedor na viagem e limpa as opções
+  Future<void> closeVoting(int tripId) async {
+    await transaction(() async {
+      // CONTAR VOTOS POR DESTINO
+      final voteCount = votes.id.count();
 
-  Future<int> getVoteCountForDestination(int destinationId) async {
-    final countExpression = votes.id.count();
-    final query = selectOnly(votes)
-      ..addColumns([countExpression])
-      ..where(votes.destinationId.equals(destinationId));
+      final query =
+          select(destinationOptions).join([
+              leftOuterJoin(
+                votes,
+                votes.destinationId.equalsExp(destinationOptions.id),
+              ),
+            ])
+            ..where(destinationOptions.tripId.equals(tripId))
+            ..addColumns([voteCount])
+            ..groupBy([destinationOptions.id])
+            ..orderBy([
+              OrderingTerm(expression: voteCount, mode: OrderingMode.desc),
+            ])
+            ..limit(1);
 
-    final row = await query.getSingle();
-    return row.read(countExpression) ?? 0;
-  }
+      final rows = await query.get();
 
-  Stream<int> watchVoteCountForDestination(int destinationId) {
-    final countExpression = votes.id.count();
-    final query = selectOnly(votes)
-      ..addColumns([countExpression])
-      ..where(votes.destinationId.equals(destinationId));
+      if (rows.isEmpty) return;
 
-    return query.watchSingle().map((row) => row.read(countExpression) ?? 0);
-  }
+      final winner = rows.first.readTable(destinationOptions);
 
-  Future<bool> hasUserVoted({
-    required int destinationId,
-    required int userId,
-  }) async {
-    final vote =
-        await (select(votes)..where(
-              (v) =>
-                  v.destinationId.equals(destinationId) &
-                  v.userId.equals(userId),
-            ))
-            .getSingleOrNull();
+      // DEFINIR DESTINO VENCEDOR NA VIAGEM
+      await (update(trips)..where((t) => t.id.equals(tripId))).write(
+        TripsCompanion(destination: Value(winner.destinationName)),
+      );
 
-    return vote != null;
+      // APAGAR OPÇÕES DE DESTINO (já não são necessárias)
+      await (delete(
+        destinationOptions,
+      )..where((d) => d.tripId.equals(tripId))).go();
+    });
   }
 }

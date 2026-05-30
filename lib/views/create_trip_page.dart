@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
 import '../data/database/app_database.dart';
 import '../data/database/database_provider.dart';
+
+import '../widgets/trips/trip_form_fields.dart';
+import '../widgets/trips/participant_card.dart';
+import '../widgets/trips/destination_option_field.dart';
 
 class CreateTripPage extends StatefulWidget {
   const CreateTripPage({super.key});
@@ -13,122 +16,121 @@ class CreateTripPage extends StatefulWidget {
 }
 
 class _CreateTripPageState extends State<CreateTripPage> {
-  final nomeController = TextEditingController();
+  final _nomeController = TextEditingController();
+  final _descricaoController = TextEditingController();
+  final _destinoController = TextEditingController();
+  final _destinoOpcaoController = TextEditingController();
 
-  final inicioController = TextEditingController();
+  DateTime? _dataInicioSelecionada;
+  DateTime? _dataFimSelecionada;
 
-  final fimController = TextEditingController();
+  // MODO: true = destino fixo, false = votação
+  bool _modoDestinoFixo = true;
 
-  final descricaoController = TextEditingController();
+  final List<User> _participantes = [];
+  List<User> _todosUsers = [];
 
-  // PARTICIPANTES
-  final List<User> participantes = [];
-
-  // TODOS USERS
-  List<User> todosUsers = [];
-
-  DateTime? dataInicioSelecionada;
-  DateTime? dataFimSelecionada;
+  // OPÇÕES DE DESTINO (modo votação)
+  final List<String> _opcoesDestino = [];
 
   @override
   void initState() {
     super.initState();
-
-    carregarUsers();
-  }
-
-  Future<void> carregarUsers() async {
-    final users = await appDatabase.usersDao.getAllUsers();
-
-    setState(() {
-      todosUsers = users;
-    });
+    _carregarUsers();
   }
 
   @override
   void dispose() {
-    nomeController.dispose();
-
-    inicioController.dispose();
-
-    fimController.dispose();
-
-    descricaoController.dispose();
-
+    _nomeController.dispose();
+    _descricaoController.dispose();
+    _destinoController.dispose();
+    _destinoOpcaoController.dispose();
     super.dispose();
   }
 
-  String formatarData(DateTime data) {
-    final dia = data.day.toString().padLeft(2, '0');
-
-    final mes = data.month.toString().padLeft(2, '0');
-
-    final ano = data.year.toString();
-
-    return '$dia/$mes/$ano';
+  Future<void> _carregarUsers() async {
+    final users = await appDatabase.usersDao.getAllUsers();
+    setState(() => _todosUsers = users);
   }
 
-  Future<void> selecionarDataInicio() async {
-    final DateTime? dataEscolhida = await showDatePicker(
+  Future<void> _selecionarDataInicio() async {
+    final data = await showDatePicker(
       context: context,
-
-      initialDate: dataInicioSelecionada ?? DateTime.now(),
-
+      initialDate: _dataInicioSelecionada ?? DateTime.now(),
       firstDate: DateTime(2020),
-
       lastDate: DateTime(2100),
     );
 
-    if (dataEscolhida != null) {
-      setState(() {
-        dataInicioSelecionada = dataEscolhida;
-
-        inicioController.text = formatarData(dataEscolhida);
-      });
-    }
+    if (data != null) setState(() => _dataInicioSelecionada = data);
   }
 
-  Future<void> selecionarDataFim() async {
-    final DateTime? dataEscolhida = await showDatePicker(
+  Future<void> _selecionarDataFim() async {
+    final data = await showDatePicker(
       context: context,
-
       initialDate:
-          dataFimSelecionada ?? dataInicioSelecionada ?? DateTime.now(),
-
-      firstDate: dataInicioSelecionada ?? DateTime(2020),
-
+          _dataFimSelecionada ?? _dataInicioSelecionada ?? DateTime.now(),
+      firstDate: _dataInicioSelecionada ?? DateTime(2020),
       lastDate: DateTime(2100),
     );
 
-    if (dataEscolhida != null) {
-      setState(() {
-        dataFimSelecionada = dataEscolhida;
-
-        fimController.text = formatarData(dataEscolhida);
-      });
-    }
+    if (data != null) setState(() => _dataFimSelecionada = data);
   }
 
-  void removerParticipante(User user) {
+  void _adicionarOpcaoDestino() {
+    final nome = _destinoOpcaoController.text.trim();
+
+    if (nome.isEmpty) return;
+
+    final jaExiste = _opcoesDestino.any(
+      (o) => o.toLowerCase() == nome.toLowerCase(),
+    );
+
+    if (jaExiste) return;
+
     setState(() {
-      participantes.remove(user);
+      _opcoesDestino.add(nome);
+      _destinoOpcaoController.clear();
     });
   }
 
-  Future<void> guardarViagem() async {
-    final nome = nomeController.text.trim();
+  void _removerOpcaoDestino(String nome) {
+    setState(() => _opcoesDestino.remove(nome));
+  }
 
-    final descricao = descricaoController.text.trim();
+  void _removerParticipante(User user) {
+    setState(() => _participantes.remove(user));
+  }
 
-    // VALIDAÇÃO
+  Future<void> _guardarViagem() async {
+    final nome = _nomeController.text.trim();
+    final descricao = _descricaoController.text.trim();
+    final destino = _destinoController.text.trim();
+
+    // VALIDAÇÃO BASE
     if (nome.isEmpty ||
-        dataInicioSelecionada == null ||
-        dataFimSelecionada == null ||
+        _dataInicioSelecionada == null ||
+        _dataFimSelecionada == null ||
         descricao.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Preenche todos os campos.')),
       );
+      return;
+    }
 
+    // VALIDAÇÃO MODO
+    if (_modoDestinoFixo && destino.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Indica o destino da viagem.')),
+      );
+      return;
+    }
+
+    if (!_modoDestinoFixo && _opcoesDestino.length < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Adiciona pelo menos duas opções de destino.'),
+        ),
+      );
       return;
     }
 
@@ -139,7 +141,6 @@ class _CreateTripPageState extends State<CreateTripPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Utilizador não autenticado.')),
       );
-
       return;
     }
 
@@ -152,34 +153,38 @@ class _CreateTripPageState extends State<CreateTripPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Erro ao carregar utilizador.')),
       );
-
       return;
     }
 
     // CRIAR VIAGEM
     final trip = await appDatabase.tripsDao.createTrip(
       name: nome,
-
       description: descricao,
-
-      startDate: dataInicioSelecionada!,
-
-      endDate: dataFimSelecionada!,
-
+      destination: _modoDestinoFixo ? destino : null,
+      startDate: _dataInicioSelecionada!,
+      endDate: _dataFimSelecionada!,
       createdByUserId: user.id,
     );
 
     // ADICIONAR PARTICIPANTES
-    for (final participante in participantes) {
-      if (participante.id == user.id) {
-        continue;
-      }
+    for (final participante in _participantes) {
+      if (participante.id == user.id) continue;
 
       await appDatabase.tripsDao.addUserToTrip(
         tripId: trip.id,
-
         userId: participante.id,
       );
+    }
+
+    // ADICIONAR OPÇÕES DE DESTINO (modo votação)
+    if (!_modoDestinoFixo) {
+      for (final opcao in _opcoesDestino) {
+        await appDatabase.destinationOptionsDao.addDestinationOption(
+          tripId: trip.id,
+          destinationName: opcao,
+          createdByUserId: user.id,
+        );
+      }
     }
 
     if (!mounted) return;
@@ -200,83 +205,97 @@ class _CreateTripPageState extends State<CreateTripPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
 
             children: [
-              // NOME
-              TextField(
-                controller: nomeController,
+              // CAMPOS BASE
+              TripFormFields(
+                nomeController: _nomeController,
+                descricaoController: _descricaoController,
+                dataInicioSelecionada: _dataInicioSelecionada,
+                dataFimSelecionada: _dataFimSelecionada,
+                onSelecionarDataInicio: _selecionarDataInicio,
+                onSelecionarDataFim: _selecionarDataFim,
+              ),
 
-                decoration: InputDecoration(
-                  labelText: 'Nome da viagem',
+              const SizedBox(height: 24),
 
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+              // TOGGLE MODO DESTINO
+              Row(
+                children: [
+                  const Expanded(child: Text('Modo de destino')),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                        value: true,
+                        label: Text('Fixo'),
+                        icon: Icon(Icons.place),
+                      ),
+                      ButtonSegment(
+                        value: false,
+                        label: Text('Votação'),
+                        icon: Icon(Icons.how_to_vote_outlined),
+                      ),
+                    ],
+                    selected: {_modoDestinoFixo},
+                    onSelectionChanged: (value) {
+                      setState(() => _modoDestinoFixo = value.first);
+                    },
                   ),
-                ),
+                ],
               ),
 
               const SizedBox(height: 18),
 
-              // DATA INÍCIO
-              TextField(
-                controller: inicioController,
-
-                readOnly: true,
-
-                onTap: selecionarDataInicio,
-
-                decoration: InputDecoration(
-                  labelText: 'Data de início',
-
-                  suffixIcon: const Icon(Icons.calendar_today),
-
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+              // DESTINO FIXO
+              if (_modoDestinoFixo)
+                TextField(
+                  controller: _destinoController,
+                  decoration: InputDecoration(
+                    labelText: 'Destino',
+                    prefixIcon: const Icon(Icons.place_outlined),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
-              ),
+
+              // OPÇÕES DE DESTINO (modo votação)
+              if (!_modoDestinoFixo) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _destinoOpcaoController,
+                        decoration: InputDecoration(
+                          labelText: 'Adicionar opção de destino',
+                          prefixIcon: const Icon(Icons.place_outlined),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onSubmitted: (_) => _adicionarOpcaoDestino(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filled(
+                      onPressed: _adicionarOpcaoDestino,
+                      icon: const Icon(Icons.add),
+                    ),
+                  ],
+                ),
+
+                if (_opcoesDestino.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  ..._opcoesDestino.map(
+                    (nome) => DestinationOptionField(
+                      name: nome,
+                      onRemover: () => _removerOpcaoDestino(nome),
+                    ),
+                  ),
+                ],
+              ],
 
               const SizedBox(height: 18),
 
-              // DATA FIM
-              TextField(
-                controller: fimController,
-
-                readOnly: true,
-
-                onTap: selecionarDataFim,
-
-                decoration: InputDecoration(
-                  labelText: 'Data de fim',
-
-                  suffixIcon: const Icon(Icons.calendar_today),
-
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 18),
-
-              // DESCRIÇÃO
-              TextField(
-                controller: descricaoController,
-
-                maxLines: 4,
-
-                decoration: InputDecoration(
-                  labelText: 'Descrição',
-
-                  alignLabelWithHint: true,
-
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 18),
-
-              // AUTOCOMPLETE
+              // AUTOCOMPLETE PARTICIPANTES
               Autocomplete<User>(
                 displayStringForOption: (User user) => user.name,
 
@@ -285,70 +304,45 @@ class _CreateTripPageState extends State<CreateTripPage> {
                     return const Iterable<User>.empty();
                   }
 
-                  return todosUsers.where((User user) {
-                    return user.name.toLowerCase().contains(
-                      textEditingValue.text.toLowerCase(),
-                    );
+                  return _todosUsers.where((user) {
+                    final jaExiste = _participantes.any((p) => p.id == user.id);
+
+                    return !jaExiste &&
+                        user.name.toLowerCase().contains(
+                          textEditingValue.text.toLowerCase(),
+                        );
                   });
                 },
 
                 onSelected: (User user) {
-                  final jaExiste = participantes.any((p) => p.id == user.id);
-
-                  if (jaExiste) {
-                    return;
-                  }
-
-                  setState(() {
-                    participantes.add(user);
-                  });
+                  setState(() => _participantes.add(user));
                 },
 
                 fieldViewBuilder:
                     (context, controller, focusNode, onEditingComplete) {
                       return TextField(
                         controller: controller,
-
                         focusNode: focusNode,
-
                         decoration: InputDecoration(
                           labelText: 'Adicionar participante',
-
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
-
                           suffixIcon: const Icon(Icons.search),
                         ),
                       );
                     },
               ),
 
-              const SizedBox(height: 12),
-
-              // PARTICIPANTES
-              if (participantes.isNotEmpty)
-                Column(
-                  children: participantes.map<Widget>((User user) {
-                    return Card(
-                      child: ListTile(
-                        leading: const Icon(Icons.person),
-
-                        title: Text(user.name),
-
-                        subtitle: Text(user.email),
-
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete),
-
-                          onPressed: () {
-                            removerParticipante(user);
-                          },
-                        ),
-                      ),
-                    );
-                  }).toList(),
+              if (_participantes.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                ..._participantes.map(
+                  (user) => ParticipantCard(
+                    user: user,
+                    onRemover: () => _removerParticipante(user),
+                  ),
                 ),
+              ],
 
               const SizedBox(height: 28),
 
@@ -358,12 +352,8 @@ class _CreateTripPageState extends State<CreateTripPage> {
                   Expanded(
                     child: SizedBox(
                       height: 52,
-
                       child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-
+                        onPressed: () => Navigator.pop(context),
                         child: const Text('Cancelar'),
                       ),
                     ),
@@ -374,10 +364,8 @@ class _CreateTripPageState extends State<CreateTripPage> {
                   Expanded(
                     child: SizedBox(
                       height: 52,
-
                       child: ElevatedButton(
-                        onPressed: guardarViagem,
-
+                        onPressed: _guardarViagem,
                         child: const Text('Guardar'),
                       ),
                     ),

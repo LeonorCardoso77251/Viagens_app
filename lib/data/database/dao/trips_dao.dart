@@ -8,68 +8,50 @@ import '../tables/users.dart';
 
 part 'trips_dao.g.dart';
 
-@DriftAccessor(
-  tables: [
-    Trips,
-    TripMembers,
-    Users,
-  ],
-)
-class TripsDao extends DatabaseAccessor<AppDatabase>
-    with _$TripsDaoMixin {
-
+@DriftAccessor(tables: [Trips, TripMembers, Users])
+class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
   TripsDao(super.attachedDatabase);
 
   // CRIAR VIAGEM
   Future<Trip> createTrip({
-
     required String name,
 
     String? description,
+
+    String? destination,
 
     required DateTime startDate,
 
     required DateTime endDate,
 
     required int createdByUserId,
-
   }) async {
-
     return transaction(() async {
-
       // CRIAR VIAGEM
-      final trip =
-      await into(trips).insertReturning(
-
+      final trip = await into(trips).insertReturning(
         TripsCompanion.insert(
-
           name: name,
 
-          description:
-          Value(description),
+          description: Value(description),
+
+          destination: Value(destination),
 
           startDate: startDate,
 
           endDate: endDate,
 
-          createdBy:
-          createdByUserId,
+          createdBy: createdByUserId,
         ),
       );
 
       // ADICIONAR CRIADOR
       await into(tripMembers).insert(
-
         TripMembersCompanion.insert(
+          userId: createdByUserId,
 
-          userId:
-          createdByUserId,
+          tripId: trip.id,
 
-          tripId:
-          trip.id,
-
-          isAdmin:
-          const Value(true),
+          isAdmin: const Value(true),
         ),
       );
 
@@ -78,135 +60,111 @@ class TripsDao extends DatabaseAccessor<AppDatabase>
   }
 
   // VIAGENS DO UTILIZADOR
-  Stream<List<Trip>> watchTripsForUser(
-      int userId,
-      ) {
-
-    final query =
-    select(trips).join([
-
-      innerJoin(
-        tripMembers,
-
-        tripMembers.tripId.equalsExp(
-          trips.id,
-        ),
-      ),
-    ])
-
-      ..where(
-        tripMembers.userId.equals(
-          userId,
-        ),
-      );
+  Stream<List<Trip>> watchTripsForUser(int userId) {
+    final query = select(trips).join([
+      innerJoin(tripMembers, tripMembers.tripId.equalsExp(trips.id)),
+    ])..where(tripMembers.userId.equals(userId));
 
     return query.watch().map(
-
-          (rows) {
-
-        return rows.map((row) {
-
-          return row.readTable(trips);
-
-        }).toList();
-      },
+      (rows) => rows.map((row) => row.readTable(trips)).toList(),
     );
   }
 
   // NOMES PARTICIPANTES
-  Future<List<String>>
-  getParticipantNamesForTrip(
-      int tripId,
-      ) {
-
-    final query =
-    select(users).join([
-
-      innerJoin(
-        tripMembers,
-
-        tripMembers.userId.equalsExp(
-          users.id,
-        ),
-      ),
-    ])
-
-      ..where(
-        tripMembers.tripId.equals(
-          tripId,
-        ),
-      );
+  Future<List<String>> getParticipantNamesForTrip(int tripId) {
+    final query = select(users).join([
+      innerJoin(tripMembers, tripMembers.userId.equalsExp(users.id)),
+    ])..where(tripMembers.tripId.equals(tripId));
 
     return query.get().then(
-
-          (rows) {
-
-        return rows.map((row) {
-
-          return row
-              .readTable(users)
-              .name;
-
-        }).toList();
-      },
+      (rows) => rows.map((row) => row.readTable(users).name).toList(),
     );
   }
 
   // UTILIZADORES DA VIAGEM
-  Future<List<User>> getUsersForTrip(
-      int tripId,
-      ) async {
+  Future<List<User>> getUsersForTrip(int tripId) async {
+    final query = select(users).join([
+      innerJoin(tripMembers, tripMembers.userId.equalsExp(users.id)),
+    ])..where(tripMembers.tripId.equals(tripId));
 
-    final query =
-    select(users).join([
+    final rows = await query.get();
 
-      innerJoin(
-        tripMembers,
-
-        tripMembers.userId.equalsExp(
-          users.id,
-        ),
-      ),
-    ])
-
-      ..where(
-        tripMembers.tripId.equals(
-          tripId,
-        ),
-      );
-
-    final rows =
-    await query.get();
-
-    return rows.map((row) {
-
-      return row.readTable(users);
-
-    }).toList();
+    return rows.map((row) => row.readTable(users)).toList();
   }
 
   // ADICIONAR UTILIZADOR À VIAGEM
   Future<void> addUserToTrip({
-
     required int tripId,
 
     required int userId,
 
     bool isAdmin = false,
-
   }) async {
-
     await into(tripMembers).insert(
-
       TripMembersCompanion.insert(
-
         tripId: tripId,
 
         userId: userId,
 
-        isAdmin:
-        Value(isAdmin),
+        isAdmin: Value(isAdmin),
       ),
     );
+  }
+
+  // ATUALIZAR VIAGEM
+  Future<void> updateTrip({
+    required int tripId,
+
+    required String name,
+
+    String? description,
+
+    String? destination,
+
+    required DateTime startDate,
+
+    required DateTime endDate,
+  }) async {
+    await (update(trips)..where((t) => t.id.equals(tripId))).write(
+      TripsCompanion(
+        name: Value(name),
+
+        description: Value(description),
+
+        destination: Value(destination),
+
+        startDate: Value(startDate),
+
+        endDate: Value(endDate),
+      ),
+    );
+  }
+
+  // ATUALIZAR PARTICIPANTES DA VIAGEM
+  // Preserva o criador (isAdmin=true) e sincroniza os restantes
+  Future<void> updateTripParticipants({
+    required int tripId,
+
+    required int createdByUserId,
+
+    required List<int> userIds,
+  }) async {
+    await transaction(() async {
+      // REMOVER membros que não estão na nova lista (exceto o criador)
+      await (delete(tripMembers)..where(
+            (tm) =>
+                tm.tripId.equals(tripId) &
+                tm.userId.isNotIn(userIds) &
+                tm.userId.equals(createdByUserId).not(),
+          ))
+          .go();
+
+      // ADICIONAR membros novos (que ainda não existem)
+      for (final userId in userIds) {
+        await into(tripMembers).insertOnConflictUpdate(
+          TripMembersCompanion.insert(tripId: tripId, userId: userId),
+        );
+      }
+    });
   }
 }

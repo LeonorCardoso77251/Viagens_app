@@ -454,6 +454,17 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, Trip> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _destinationMeta = const VerificationMeta(
+    'destination',
+  );
+  @override
+  late final GeneratedColumn<String> destination = GeneratedColumn<String>(
+    'destination',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _startDateMeta = const VerificationMeta(
     'startDate',
   );
@@ -507,6 +518,7 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, Trip> {
     id,
     name,
     description,
+    destination,
     startDate,
     endDate,
     createdBy,
@@ -541,6 +553,15 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, Trip> {
         description.isAcceptableOrUnknown(
           data['description']!,
           _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('destination')) {
+      context.handle(
+        _destinationMeta,
+        destination.isAcceptableOrUnknown(
+          data['destination']!,
+          _destinationMeta,
         ),
       );
     }
@@ -595,6 +616,10 @@ class $TripsTable extends Trips with TableInfo<$TripsTable, Trip> {
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       ),
+      destination: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}destination'],
+      ),
       startDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}start_date'],
@@ -624,6 +649,7 @@ class Trip extends DataClass implements Insertable<Trip> {
   final int id;
   final String name;
   final String? description;
+  final String? destination;
   final DateTime startDate;
   final DateTime endDate;
   final int createdBy;
@@ -632,6 +658,7 @@ class Trip extends DataClass implements Insertable<Trip> {
     required this.id,
     required this.name,
     this.description,
+    this.destination,
     required this.startDate,
     required this.endDate,
     required this.createdBy,
@@ -644,6 +671,9 @@ class Trip extends DataClass implements Insertable<Trip> {
     map['name'] = Variable<String>(name);
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
+    }
+    if (!nullToAbsent || destination != null) {
+      map['destination'] = Variable<String>(destination);
     }
     map['start_date'] = Variable<DateTime>(startDate);
     map['end_date'] = Variable<DateTime>(endDate);
@@ -659,6 +689,9 @@ class Trip extends DataClass implements Insertable<Trip> {
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
+      destination: destination == null && nullToAbsent
+          ? const Value.absent()
+          : Value(destination),
       startDate: Value(startDate),
       endDate: Value(endDate),
       createdBy: Value(createdBy),
@@ -675,6 +708,7 @@ class Trip extends DataClass implements Insertable<Trip> {
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       description: serializer.fromJson<String?>(json['description']),
+      destination: serializer.fromJson<String?>(json['destination']),
       startDate: serializer.fromJson<DateTime>(json['startDate']),
       endDate: serializer.fromJson<DateTime>(json['endDate']),
       createdBy: serializer.fromJson<int>(json['createdBy']),
@@ -688,6 +722,7 @@ class Trip extends DataClass implements Insertable<Trip> {
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
       'description': serializer.toJson<String?>(description),
+      'destination': serializer.toJson<String?>(destination),
       'startDate': serializer.toJson<DateTime>(startDate),
       'endDate': serializer.toJson<DateTime>(endDate),
       'createdBy': serializer.toJson<int>(createdBy),
@@ -699,6 +734,7 @@ class Trip extends DataClass implements Insertable<Trip> {
     int? id,
     String? name,
     Value<String?> description = const Value.absent(),
+    Value<String?> destination = const Value.absent(),
     DateTime? startDate,
     DateTime? endDate,
     int? createdBy,
@@ -707,6 +743,7 @@ class Trip extends DataClass implements Insertable<Trip> {
     id: id ?? this.id,
     name: name ?? this.name,
     description: description.present ? description.value : this.description,
+    destination: destination.present ? destination.value : this.destination,
     startDate: startDate ?? this.startDate,
     endDate: endDate ?? this.endDate,
     createdBy: createdBy ?? this.createdBy,
@@ -719,6 +756,9 @@ class Trip extends DataClass implements Insertable<Trip> {
       description: data.description.present
           ? data.description.value
           : this.description,
+      destination: data.destination.present
+          ? data.destination.value
+          : this.destination,
       startDate: data.startDate.present ? data.startDate.value : this.startDate,
       endDate: data.endDate.present ? data.endDate.value : this.endDate,
       createdBy: data.createdBy.present ? data.createdBy.value : this.createdBy,
@@ -732,6 +772,7 @@ class Trip extends DataClass implements Insertable<Trip> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('description: $description, ')
+          ..write('destination: $destination, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('createdBy: $createdBy, ')
@@ -745,6 +786,7 @@ class Trip extends DataClass implements Insertable<Trip> {
     id,
     name,
     description,
+    destination,
     startDate,
     endDate,
     createdBy,
@@ -757,6 +799,7 @@ class Trip extends DataClass implements Insertable<Trip> {
           other.id == this.id &&
           other.name == this.name &&
           other.description == this.description &&
+          other.destination == this.destination &&
           other.startDate == this.startDate &&
           other.endDate == this.endDate &&
           other.createdBy == this.createdBy &&
@@ -767,6 +810,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
   final Value<int> id;
   final Value<String> name;
   final Value<String?> description;
+  final Value<String?> destination;
   final Value<DateTime> startDate;
   final Value<DateTime> endDate;
   final Value<int> createdBy;
@@ -775,6 +819,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.description = const Value.absent(),
+    this.destination = const Value.absent(),
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
     this.createdBy = const Value.absent(),
@@ -784,6 +829,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     this.id = const Value.absent(),
     required String name,
     this.description = const Value.absent(),
+    this.destination = const Value.absent(),
     required DateTime startDate,
     required DateTime endDate,
     required int createdBy,
@@ -796,6 +842,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     Expression<int>? id,
     Expression<String>? name,
     Expression<String>? description,
+    Expression<String>? destination,
     Expression<DateTime>? startDate,
     Expression<DateTime>? endDate,
     Expression<int>? createdBy,
@@ -805,6 +852,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (description != null) 'description': description,
+      if (destination != null) 'destination': destination,
       if (startDate != null) 'start_date': startDate,
       if (endDate != null) 'end_date': endDate,
       if (createdBy != null) 'created_by': createdBy,
@@ -816,6 +864,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     Value<int>? id,
     Value<String>? name,
     Value<String?>? description,
+    Value<String?>? destination,
     Value<DateTime>? startDate,
     Value<DateTime>? endDate,
     Value<int>? createdBy,
@@ -825,6 +874,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
       id: id ?? this.id,
       name: name ?? this.name,
       description: description ?? this.description,
+      destination: destination ?? this.destination,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       createdBy: createdBy ?? this.createdBy,
@@ -843,6 +893,9 @@ class TripsCompanion extends UpdateCompanion<Trip> {
     }
     if (description.present) {
       map['description'] = Variable<String>(description.value);
+    }
+    if (destination.present) {
+      map['destination'] = Variable<String>(destination.value);
     }
     if (startDate.present) {
       map['start_date'] = Variable<DateTime>(startDate.value);
@@ -865,6 +918,7 @@ class TripsCompanion extends UpdateCompanion<Trip> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('description: $description, ')
+          ..write('destination: $destination, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('createdBy: $createdBy, ')
@@ -1616,6 +1670,18 @@ class $VotesTable extends Votes with TableInfo<$VotesTable, Vote> {
       'PRIMARY KEY AUTOINCREMENT',
     ),
   );
+  static const VerificationMeta _tripIdMeta = const VerificationMeta('tripId');
+  @override
+  late final GeneratedColumn<int> tripId = GeneratedColumn<int>(
+    'trip_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES trips (id) ON DELETE CASCADE',
+    ),
+  );
   static const VerificationMeta _destinationIdMeta = const VerificationMeta(
     'destinationId',
   );
@@ -1655,7 +1721,13 @@ class $VotesTable extends Votes with TableInfo<$VotesTable, Vote> {
     defaultValue: currentDateAndTime,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, destinationId, userId, createdAt];
+  List<GeneratedColumn> get $columns => [
+    id,
+    tripId,
+    destinationId,
+    userId,
+    createdAt,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1670,6 +1742,14 @@ class $VotesTable extends Votes with TableInfo<$VotesTable, Vote> {
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('trip_id')) {
+      context.handle(
+        _tripIdMeta,
+        tripId.isAcceptableOrUnknown(data['trip_id']!, _tripIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tripIdMeta);
     }
     if (data.containsKey('destination_id')) {
       context.handle(
@@ -1703,6 +1783,7 @@ class $VotesTable extends Votes with TableInfo<$VotesTable, Vote> {
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
   List<Set<GeneratedColumn>> get uniqueKeys => [
+    {tripId, userId},
     {destinationId, userId},
   ];
   @override
@@ -1712,6 +1793,10 @@ class $VotesTable extends Votes with TableInfo<$VotesTable, Vote> {
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}id'],
+      )!,
+      tripId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}trip_id'],
       )!,
       destinationId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -1736,11 +1821,13 @@ class $VotesTable extends Votes with TableInfo<$VotesTable, Vote> {
 
 class Vote extends DataClass implements Insertable<Vote> {
   final int id;
+  final int tripId;
   final int destinationId;
   final int userId;
   final DateTime createdAt;
   const Vote({
     required this.id,
+    required this.tripId,
     required this.destinationId,
     required this.userId,
     required this.createdAt,
@@ -1749,6 +1836,7 @@ class Vote extends DataClass implements Insertable<Vote> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
+    map['trip_id'] = Variable<int>(tripId);
     map['destination_id'] = Variable<int>(destinationId);
     map['user_id'] = Variable<int>(userId);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -1758,6 +1846,7 @@ class Vote extends DataClass implements Insertable<Vote> {
   VotesCompanion toCompanion(bool nullToAbsent) {
     return VotesCompanion(
       id: Value(id),
+      tripId: Value(tripId),
       destinationId: Value(destinationId),
       userId: Value(userId),
       createdAt: Value(createdAt),
@@ -1771,6 +1860,7 @@ class Vote extends DataClass implements Insertable<Vote> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Vote(
       id: serializer.fromJson<int>(json['id']),
+      tripId: serializer.fromJson<int>(json['tripId']),
       destinationId: serializer.fromJson<int>(json['destinationId']),
       userId: serializer.fromJson<int>(json['userId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -1781,6 +1871,7 @@ class Vote extends DataClass implements Insertable<Vote> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
+      'tripId': serializer.toJson<int>(tripId),
       'destinationId': serializer.toJson<int>(destinationId),
       'userId': serializer.toJson<int>(userId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -1789,11 +1880,13 @@ class Vote extends DataClass implements Insertable<Vote> {
 
   Vote copyWith({
     int? id,
+    int? tripId,
     int? destinationId,
     int? userId,
     DateTime? createdAt,
   }) => Vote(
     id: id ?? this.id,
+    tripId: tripId ?? this.tripId,
     destinationId: destinationId ?? this.destinationId,
     userId: userId ?? this.userId,
     createdAt: createdAt ?? this.createdAt,
@@ -1801,6 +1894,7 @@ class Vote extends DataClass implements Insertable<Vote> {
   Vote copyWithCompanion(VotesCompanion data) {
     return Vote(
       id: data.id.present ? data.id.value : this.id,
+      tripId: data.tripId.present ? data.tripId.value : this.tripId,
       destinationId: data.destinationId.present
           ? data.destinationId.value
           : this.destinationId,
@@ -1813,6 +1907,7 @@ class Vote extends DataClass implements Insertable<Vote> {
   String toString() {
     return (StringBuffer('Vote(')
           ..write('id: $id, ')
+          ..write('tripId: $tripId, ')
           ..write('destinationId: $destinationId, ')
           ..write('userId: $userId, ')
           ..write('createdAt: $createdAt')
@@ -1821,12 +1916,13 @@ class Vote extends DataClass implements Insertable<Vote> {
   }
 
   @override
-  int get hashCode => Object.hash(id, destinationId, userId, createdAt);
+  int get hashCode => Object.hash(id, tripId, destinationId, userId, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Vote &&
           other.id == this.id &&
+          other.tripId == this.tripId &&
           other.destinationId == this.destinationId &&
           other.userId == this.userId &&
           other.createdAt == this.createdAt);
@@ -1834,30 +1930,36 @@ class Vote extends DataClass implements Insertable<Vote> {
 
 class VotesCompanion extends UpdateCompanion<Vote> {
   final Value<int> id;
+  final Value<int> tripId;
   final Value<int> destinationId;
   final Value<int> userId;
   final Value<DateTime> createdAt;
   const VotesCompanion({
     this.id = const Value.absent(),
+    this.tripId = const Value.absent(),
     this.destinationId = const Value.absent(),
     this.userId = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   VotesCompanion.insert({
     this.id = const Value.absent(),
+    required int tripId,
     required int destinationId,
     required int userId,
     this.createdAt = const Value.absent(),
-  }) : destinationId = Value(destinationId),
+  }) : tripId = Value(tripId),
+       destinationId = Value(destinationId),
        userId = Value(userId);
   static Insertable<Vote> custom({
     Expression<int>? id,
+    Expression<int>? tripId,
     Expression<int>? destinationId,
     Expression<int>? userId,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (tripId != null) 'trip_id': tripId,
       if (destinationId != null) 'destination_id': destinationId,
       if (userId != null) 'user_id': userId,
       if (createdAt != null) 'created_at': createdAt,
@@ -1866,12 +1968,14 @@ class VotesCompanion extends UpdateCompanion<Vote> {
 
   VotesCompanion copyWith({
     Value<int>? id,
+    Value<int>? tripId,
     Value<int>? destinationId,
     Value<int>? userId,
     Value<DateTime>? createdAt,
   }) {
     return VotesCompanion(
       id: id ?? this.id,
+      tripId: tripId ?? this.tripId,
       destinationId: destinationId ?? this.destinationId,
       userId: userId ?? this.userId,
       createdAt: createdAt ?? this.createdAt,
@@ -1883,6 +1987,9 @@ class VotesCompanion extends UpdateCompanion<Vote> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<int>(id.value);
+    }
+    if (tripId.present) {
+      map['trip_id'] = Variable<int>(tripId.value);
     }
     if (destinationId.present) {
       map['destination_id'] = Variable<int>(destinationId.value);
@@ -1900,6 +2007,7 @@ class VotesCompanion extends UpdateCompanion<Vote> {
   String toString() {
     return (StringBuffer('VotesCompanion(')
           ..write('id: $id, ')
+          ..write('tripId: $tripId, ')
           ..write('destinationId: $destinationId, ')
           ..write('userId: $userId, ')
           ..write('createdAt: $createdAt')
@@ -3551,6 +3659,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
+        'trips',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('votes', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
         'destination_options',
         limitUpdateKind: UpdateKind.delete,
       ),
@@ -4464,6 +4579,7 @@ typedef $$TripsTableCreateCompanionBuilder =
       Value<int> id,
       required String name,
       Value<String?> description,
+      Value<String?> destination,
       required DateTime startDate,
       required DateTime endDate,
       required int createdBy,
@@ -4474,6 +4590,7 @@ typedef $$TripsTableUpdateCompanionBuilder =
       Value<int> id,
       Value<String> name,
       Value<String?> description,
+      Value<String?> destination,
       Value<DateTime> startDate,
       Value<DateTime> endDate,
       Value<int> createdBy,
@@ -4539,6 +4656,25 @@ final class $$TripsTableReferences
     final cache = $_typedResult.readTableOrNull(
       _destinationOptionsRefsTable($_db),
     );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$VotesTable, List<Vote>> _votesRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.votes,
+    aliasName: $_aliasNameGenerator(db.trips.id, db.votes.tripId),
+  );
+
+  $$VotesTableProcessedTableManager get votesRefs {
+    final manager = $$VotesTableTableManager(
+      $_db,
+      $_db.votes,
+    ).filter((f) => f.tripId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_votesRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -4624,6 +4760,11 @@ class $$TripsTableFilterComposer extends Composer<_$AppDatabase, $TripsTable> {
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get destination => $composableBuilder(
+    column: $table.destination,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get startDate => $composableBuilder(
     column: $table.startDate,
     builder: (column) => ColumnFilters(column),
@@ -4703,6 +4844,31 @@ class $$TripsTableFilterComposer extends Composer<_$AppDatabase, $TripsTable> {
           }) => $$DestinationOptionsTableFilterComposer(
             $db: $db,
             $table: $db.destinationOptions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> votesRefs(
+    Expression<bool> Function($$VotesTableFilterComposer f) f,
+  ) {
+    final $$VotesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.votes,
+      getReferencedColumn: (t) => t.tripId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$VotesTableFilterComposer(
+            $db: $db,
+            $table: $db.votes,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -4812,6 +4978,11 @@ class $$TripsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get destination => $composableBuilder(
+    column: $table.destination,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get startDate => $composableBuilder(
     column: $table.startDate,
     builder: (column) => ColumnOrderings(column),
@@ -4868,6 +5039,11 @@ class $$TripsTableAnnotationComposer
 
   GeneratedColumn<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get destination => $composableBuilder(
+    column: $table.destination,
     builder: (column) => column,
   );
 
@@ -4951,6 +5127,31 @@ class $$TripsTableAnnotationComposer
                     $removeJoinBuilderFromRootComposer,
               ),
         );
+    return f(composer);
+  }
+
+  Expression<T> votesRefs<T extends Object>(
+    Expression<T> Function($$VotesTableAnnotationComposer a) f,
+  ) {
+    final $$VotesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.votes,
+      getReferencedColumn: (t) => t.tripId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$VotesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.votes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
     return f(composer);
   }
 
@@ -5047,6 +5248,7 @@ class $$TripsTableTableManager
             bool createdBy,
             bool tripMembersRefs,
             bool destinationOptionsRefs,
+            bool votesRefs,
             bool tasksRefs,
             bool expensesRefs,
             bool activitiesRefs,
@@ -5068,6 +5270,7 @@ class $$TripsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String?> description = const Value.absent(),
+                Value<String?> destination = const Value.absent(),
                 Value<DateTime> startDate = const Value.absent(),
                 Value<DateTime> endDate = const Value.absent(),
                 Value<int> createdBy = const Value.absent(),
@@ -5076,6 +5279,7 @@ class $$TripsTableTableManager
                 id: id,
                 name: name,
                 description: description,
+                destination: destination,
                 startDate: startDate,
                 endDate: endDate,
                 createdBy: createdBy,
@@ -5086,6 +5290,7 @@ class $$TripsTableTableManager
                 Value<int> id = const Value.absent(),
                 required String name,
                 Value<String?> description = const Value.absent(),
+                Value<String?> destination = const Value.absent(),
                 required DateTime startDate,
                 required DateTime endDate,
                 required int createdBy,
@@ -5094,6 +5299,7 @@ class $$TripsTableTableManager
                 id: id,
                 name: name,
                 description: description,
+                destination: destination,
                 startDate: startDate,
                 endDate: endDate,
                 createdBy: createdBy,
@@ -5110,6 +5316,7 @@ class $$TripsTableTableManager
                 createdBy = false,
                 tripMembersRefs = false,
                 destinationOptionsRefs = false,
+                votesRefs = false,
                 tasksRefs = false,
                 expensesRefs = false,
                 activitiesRefs = false,
@@ -5119,6 +5326,7 @@ class $$TripsTableTableManager
                   explicitlyWatchedTables: [
                     if (tripMembersRefs) db.tripMembers,
                     if (destinationOptionsRefs) db.destinationOptions,
+                    if (votesRefs) db.votes,
                     if (tasksRefs) db.tasks,
                     if (expensesRefs) db.expenses,
                     if (activitiesRefs) db.activities,
@@ -5199,6 +5407,19 @@ class $$TripsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (votesRefs)
+                        await $_getPrefetchedData<Trip, $TripsTable, Vote>(
+                          currentTable: table,
+                          referencedTable: $$TripsTableReferences
+                              ._votesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TripsTableReferences(db, table, p0).votesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.tripId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                       if (tasksRefs)
                         await $_getPrefetchedData<Trip, $TripsTable, Task>(
                           currentTable: table,
@@ -5270,6 +5491,7 @@ typedef $$TripsTableProcessedTableManager =
         bool createdBy,
         bool tripMembersRefs,
         bool destinationOptionsRefs,
+        bool votesRefs,
         bool tasksRefs,
         bool expensesRefs,
         bool activitiesRefs,
@@ -6193,6 +6415,7 @@ typedef $$DestinationOptionsTableProcessedTableManager =
 typedef $$VotesTableCreateCompanionBuilder =
     VotesCompanion Function({
       Value<int> id,
+      required int tripId,
       required int destinationId,
       required int userId,
       Value<DateTime> createdAt,
@@ -6200,6 +6423,7 @@ typedef $$VotesTableCreateCompanionBuilder =
 typedef $$VotesTableUpdateCompanionBuilder =
     VotesCompanion Function({
       Value<int> id,
+      Value<int> tripId,
       Value<int> destinationId,
       Value<int> userId,
       Value<DateTime> createdAt,
@@ -6208,6 +6432,23 @@ typedef $$VotesTableUpdateCompanionBuilder =
 final class $$VotesTableReferences
     extends BaseReferences<_$AppDatabase, $VotesTable, Vote> {
   $$VotesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $TripsTable _tripIdTable(_$AppDatabase db) =>
+      db.trips.createAlias($_aliasNameGenerator(db.votes.tripId, db.trips.id));
+
+  $$TripsTableProcessedTableManager get tripId {
+    final $_column = $_itemColumn<int>('trip_id')!;
+
+    final manager = $$TripsTableTableManager(
+      $_db,
+      $_db.trips,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_tripIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
 
   static $DestinationOptionsTable _destinationIdTable(_$AppDatabase db) =>
       db.destinationOptions.createAlias(
@@ -6263,6 +6504,29 @@ class $$VotesTableFilterComposer extends Composer<_$AppDatabase, $VotesTable> {
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  $$TripsTableFilterComposer get tripId {
+    final $$TripsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tripId,
+      referencedTable: $db.trips,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TripsTableFilterComposer(
+            $db: $db,
+            $table: $db.trips,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 
   $$DestinationOptionsTableFilterComposer get destinationId {
     final $$DestinationOptionsTableFilterComposer composer = $composerBuilder(
@@ -6330,6 +6594,29 @@ class $$VotesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  $$TripsTableOrderingComposer get tripId {
+    final $$TripsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tripId,
+      referencedTable: $db.trips,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TripsTableOrderingComposer(
+            $db: $db,
+            $table: $db.trips,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
   $$DestinationOptionsTableOrderingComposer get destinationId {
     final $$DestinationOptionsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -6392,6 +6679,29 @@ class $$VotesTableAnnotationComposer
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
+  $$TripsTableAnnotationComposer get tripId {
+    final $$TripsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.tripId,
+      referencedTable: $db.trips,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TripsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.trips,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
   $$DestinationOptionsTableAnnotationComposer get destinationId {
     final $$DestinationOptionsTableAnnotationComposer composer =
         $composerBuilder(
@@ -6453,7 +6763,7 @@ class $$VotesTableTableManager
           $$VotesTableUpdateCompanionBuilder,
           (Vote, $$VotesTableReferences),
           Vote,
-          PrefetchHooks Function({bool destinationId, bool userId})
+          PrefetchHooks Function({bool tripId, bool destinationId, bool userId})
         > {
   $$VotesTableTableManager(_$AppDatabase db, $VotesTable table)
     : super(
@@ -6469,11 +6779,13 @@ class $$VotesTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
+                Value<int> tripId = const Value.absent(),
                 Value<int> destinationId = const Value.absent(),
                 Value<int> userId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => VotesCompanion(
                 id: id,
+                tripId: tripId,
                 destinationId: destinationId,
                 userId: userId,
                 createdAt: createdAt,
@@ -6481,11 +6793,13 @@ class $$VotesTableTableManager
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
+                required int tripId,
                 required int destinationId,
                 required int userId,
                 Value<DateTime> createdAt = const Value.absent(),
               }) => VotesCompanion.insert(
                 id: id,
+                tripId: tripId,
                 destinationId: destinationId,
                 userId: userId,
                 createdAt: createdAt,
@@ -6496,60 +6810,74 @@ class $$VotesTableTableManager
                     (e.readTable(table), $$VotesTableReferences(db, table, e)),
               )
               .toList(),
-          prefetchHooksCallback: ({destinationId = false, userId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (destinationId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.destinationId,
-                                referencedTable: $$VotesTableReferences
-                                    ._destinationIdTable(db),
-                                referencedColumn: $$VotesTableReferences
-                                    ._destinationIdTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
-                    if (userId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.userId,
-                                referencedTable: $$VotesTableReferences
-                                    ._userIdTable(db),
-                                referencedColumn: $$VotesTableReferences
-                                    ._userIdTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
+          prefetchHooksCallback:
+              ({tripId = false, destinationId = false, userId = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (tripId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.tripId,
+                                    referencedTable: $$VotesTableReferences
+                                        ._tripIdTable(db),
+                                    referencedColumn: $$VotesTableReferences
+                                        ._tripIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
+                        if (destinationId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.destinationId,
+                                    referencedTable: $$VotesTableReferences
+                                        ._destinationIdTable(db),
+                                    referencedColumn: $$VotesTableReferences
+                                        ._destinationIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
+                        if (userId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.userId,
+                                    referencedTable: $$VotesTableReferences
+                                        ._userIdTable(db),
+                                    referencedColumn: $$VotesTableReferences
+                                        ._userIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -6566,7 +6894,7 @@ typedef $$VotesTableProcessedTableManager =
       $$VotesTableUpdateCompanionBuilder,
       (Vote, $$VotesTableReferences),
       Vote,
-      PrefetchHooks Function({bool destinationId, bool userId})
+      PrefetchHooks Function({bool tripId, bool destinationId, bool userId})
     >;
 typedef $$TasksTableCreateCompanionBuilder =
     TasksCompanion Function({

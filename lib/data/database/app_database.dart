@@ -36,32 +36,40 @@ part 'app_database.g.dart';
     ExpenseSplits,
     Activities,
   ],
-  daos: [UsersDao, TripsDao, DestinationOptionsDao, TasksDao, ExpensesDao, ActivitiesDao,],
+  daos: [
+    UsersDao,
+    TripsDao,
+    DestinationOptionsDao,
+    TasksDao,
+    ExpensesDao,
+    ActivitiesDao,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-
     onCreate: (m) async {
       await m.createAll();
     },
 
     onUpgrade: (m, from, to) async {
+      if (from < 3) {
+        // Adicionar coluna destination à tabela trips
+        await m.addColumn(trips, trips.destination);
 
-      // DESENVOLVIMENTO
-      // recria tabelas necessárias
-      await m.createAll();
+        // Recriar tabela votes com tripId e nova unique constraint
+        await m.drop(votes);
+        await m.createTable(votes);
+      }
     },
 
     beforeOpen: (details) async {
-      await customStatement(
-        'PRAGMA foreign_keys = ON;',
-      );
+      await customStatement('PRAGMA foreign_keys = ON;');
     },
   );
 

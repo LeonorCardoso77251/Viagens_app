@@ -8,6 +8,8 @@ class Trips extends Table {
 
   TextColumn get description => text().nullable()();
 
+  TextColumn get destination => text().nullable()();
+
   DateTimeColumn get startDate => dateTime().named('start_date')();
 
   DateTimeColumn get endDate => dateTime().named('end_date')();
