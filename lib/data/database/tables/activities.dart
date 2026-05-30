@@ -5,8 +5,7 @@ class Activities extends Table {
   IntColumn get id => integer().autoIncrement()();
 
   IntColumn get tripId => integer()
-      .named('trip_id')
-      .references(Trips, #id, onDelete: KeyAction.cascade)();
+      .references(Trips, #id)();
 
   TextColumn get nome => text()();
 

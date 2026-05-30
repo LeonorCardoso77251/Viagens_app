@@ -286,24 +286,32 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
                   },
                 ),
 
-              TripSectionButton(
-                label: 'Tarefas',
-                destination: TripTasksPage(trip: widget.trip),
-              ),
+              if (widget.trip.destination != null) ...[
+                TripSectionButton(
+                  label: 'Tarefas',
+                  destination: TripTasksPage(
+                    trip: widget.trip,
+                  ),
+                ),
 
-              const SizedBox(height: 10),
+                const SizedBox(height: 10),
 
-              TripSectionButton(
-                label: 'Itinerário',
-                destination: TripItineraryPage(trip: widget.trip),
-              ),
+                TripSectionButton(
+                  label: 'Itinerário',
+                  destination: TripItineraryPage(
+                    trip: widget.trip,
+                  ),
+                ),
 
-              const SizedBox(height: 10),
+                const SizedBox(height: 10),
 
-              TripSectionButton(
-                label: 'Despesas',
-                destination: TripExpensesPage(trip: widget.trip),
-              ),
+                TripSectionButton(
+                  label: 'Despesas',
+                  destination: TripExpensesPage(
+                    trip: widget.trip,
+                  ),
+                ),
+              ]
             ],
           ],
         ),

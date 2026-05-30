@@ -3284,7 +3284,7 @@ class $ActivitiesTable extends Activities
     type: DriftSqlType.int,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES trips (id) ON DELETE CASCADE',
+      'REFERENCES trips (id)',
     ),
   );
   static const VerificationMeta _nomeMeta = const VerificationMeta('nome');
@@ -3316,8 +3316,38 @@ class $ActivitiesTable extends Activities
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _latitudeMeta = const VerificationMeta(
+    'latitude',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, tripId, nome, dataHora, local];
+  late final GeneratedColumn<double> latitude = GeneratedColumn<double>(
+    'latitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _longitudeMeta = const VerificationMeta(
+    'longitude',
+  );
+  @override
+  late final GeneratedColumn<double> longitude = GeneratedColumn<double>(
+    'longitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    tripId,
+    nome,
+    dataHora,
+    local,
+    latitude,
+    longitude,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -3365,6 +3395,18 @@ class $ActivitiesTable extends Activities
     } else if (isInserting) {
       context.missing(_localMeta);
     }
+    if (data.containsKey('latitude')) {
+      context.handle(
+        _latitudeMeta,
+        latitude.isAcceptableOrUnknown(data['latitude']!, _latitudeMeta),
+      );
+    }
+    if (data.containsKey('longitude')) {
+      context.handle(
+        _longitudeMeta,
+        longitude.isAcceptableOrUnknown(data['longitude']!, _longitudeMeta),
+      );
+    }
     return context;
   }
 
@@ -3394,6 +3436,14 @@ class $ActivitiesTable extends Activities
         DriftSqlType.string,
         data['${effectivePrefix}local'],
       )!,
+      latitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}latitude'],
+      ),
+      longitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}longitude'],
+      ),
     );
   }
 
@@ -3409,12 +3459,16 @@ class Activity extends DataClass implements Insertable<Activity> {
   final String nome;
   final DateTime dataHora;
   final String local;
+  final double? latitude;
+  final double? longitude;
   const Activity({
     required this.id,
     required this.tripId,
     required this.nome,
     required this.dataHora,
     required this.local,
+    this.latitude,
+    this.longitude,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3424,6 +3478,12 @@ class Activity extends DataClass implements Insertable<Activity> {
     map['nome'] = Variable<String>(nome);
     map['data_hora'] = Variable<DateTime>(dataHora);
     map['local'] = Variable<String>(local);
+    if (!nullToAbsent || latitude != null) {
+      map['latitude'] = Variable<double>(latitude);
+    }
+    if (!nullToAbsent || longitude != null) {
+      map['longitude'] = Variable<double>(longitude);
+    }
     return map;
   }
 
@@ -3434,6 +3494,12 @@ class Activity extends DataClass implements Insertable<Activity> {
       nome: Value(nome),
       dataHora: Value(dataHora),
       local: Value(local),
+      latitude: latitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(latitude),
+      longitude: longitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(longitude),
     );
   }
 
@@ -3448,6 +3514,8 @@ class Activity extends DataClass implements Insertable<Activity> {
       nome: serializer.fromJson<String>(json['nome']),
       dataHora: serializer.fromJson<DateTime>(json['dataHora']),
       local: serializer.fromJson<String>(json['local']),
+      latitude: serializer.fromJson<double?>(json['latitude']),
+      longitude: serializer.fromJson<double?>(json['longitude']),
     );
   }
   @override
@@ -3459,6 +3527,8 @@ class Activity extends DataClass implements Insertable<Activity> {
       'nome': serializer.toJson<String>(nome),
       'dataHora': serializer.toJson<DateTime>(dataHora),
       'local': serializer.toJson<String>(local),
+      'latitude': serializer.toJson<double?>(latitude),
+      'longitude': serializer.toJson<double?>(longitude),
     };
   }
 
@@ -3468,12 +3538,16 @@ class Activity extends DataClass implements Insertable<Activity> {
     String? nome,
     DateTime? dataHora,
     String? local,
+    Value<double?> latitude = const Value.absent(),
+    Value<double?> longitude = const Value.absent(),
   }) => Activity(
     id: id ?? this.id,
     tripId: tripId ?? this.tripId,
     nome: nome ?? this.nome,
     dataHora: dataHora ?? this.dataHora,
     local: local ?? this.local,
+    latitude: latitude.present ? latitude.value : this.latitude,
+    longitude: longitude.present ? longitude.value : this.longitude,
   );
   Activity copyWithCompanion(ActivitiesCompanion data) {
     return Activity(
@@ -3482,6 +3556,8 @@ class Activity extends DataClass implements Insertable<Activity> {
       nome: data.nome.present ? data.nome.value : this.nome,
       dataHora: data.dataHora.present ? data.dataHora.value : this.dataHora,
       local: data.local.present ? data.local.value : this.local,
+      latitude: data.latitude.present ? data.latitude.value : this.latitude,
+      longitude: data.longitude.present ? data.longitude.value : this.longitude,
     );
   }
 
@@ -3492,13 +3568,16 @@ class Activity extends DataClass implements Insertable<Activity> {
           ..write('tripId: $tripId, ')
           ..write('nome: $nome, ')
           ..write('dataHora: $dataHora, ')
-          ..write('local: $local')
+          ..write('local: $local, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, tripId, nome, dataHora, local);
+  int get hashCode =>
+      Object.hash(id, tripId, nome, dataHora, local, latitude, longitude);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3507,7 +3586,9 @@ class Activity extends DataClass implements Insertable<Activity> {
           other.tripId == this.tripId &&
           other.nome == this.nome &&
           other.dataHora == this.dataHora &&
-          other.local == this.local);
+          other.local == this.local &&
+          other.latitude == this.latitude &&
+          other.longitude == this.longitude);
 }
 
 class ActivitiesCompanion extends UpdateCompanion<Activity> {
@@ -3516,12 +3597,16 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
   final Value<String> nome;
   final Value<DateTime> dataHora;
   final Value<String> local;
+  final Value<double?> latitude;
+  final Value<double?> longitude;
   const ActivitiesCompanion({
     this.id = const Value.absent(),
     this.tripId = const Value.absent(),
     this.nome = const Value.absent(),
     this.dataHora = const Value.absent(),
     this.local = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
   });
   ActivitiesCompanion.insert({
     this.id = const Value.absent(),
@@ -3529,6 +3614,8 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
     required String nome,
     required DateTime dataHora,
     required String local,
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
   }) : tripId = Value(tripId),
        nome = Value(nome),
        dataHora = Value(dataHora),
@@ -3539,6 +3626,8 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
     Expression<String>? nome,
     Expression<DateTime>? dataHora,
     Expression<String>? local,
+    Expression<double>? latitude,
+    Expression<double>? longitude,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3546,6 +3635,8 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
       if (nome != null) 'nome': nome,
       if (dataHora != null) 'data_hora': dataHora,
       if (local != null) 'local': local,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
     });
   }
 
@@ -3555,6 +3646,8 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
     Value<String>? nome,
     Value<DateTime>? dataHora,
     Value<String>? local,
+    Value<double?>? latitude,
+    Value<double?>? longitude,
   }) {
     return ActivitiesCompanion(
       id: id ?? this.id,
@@ -3562,6 +3655,8 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
       nome: nome ?? this.nome,
       dataHora: dataHora ?? this.dataHora,
       local: local ?? this.local,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 
@@ -3583,6 +3678,12 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
     if (local.present) {
       map['local'] = Variable<String>(local.value);
     }
+    if (latitude.present) {
+      map['latitude'] = Variable<double>(latitude.value);
+    }
+    if (longitude.present) {
+      map['longitude'] = Variable<double>(longitude.value);
+    }
     return map;
   }
 
@@ -3593,7 +3694,9 @@ class ActivitiesCompanion extends UpdateCompanion<Activity> {
           ..write('tripId: $tripId, ')
           ..write('nome: $nome, ')
           ..write('dataHora: $dataHora, ')
-          ..write('local: $local')
+          ..write('local: $local, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude')
           ..write(')'))
         .toString();
   }
@@ -3698,13 +3801,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('expense_splits', kind: UpdateKind.delete)],
-    ),
-    WritePropagation(
-      on: TableUpdateQuery.onTableName(
-        'trips',
-        limitUpdateKind: UpdateKind.delete,
-      ),
-      result: [TableUpdate('activities', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -8263,6 +8359,8 @@ typedef $$ActivitiesTableCreateCompanionBuilder =
       required String nome,
       required DateTime dataHora,
       required String local,
+      Value<double?> latitude,
+      Value<double?> longitude,
     });
 typedef $$ActivitiesTableUpdateCompanionBuilder =
     ActivitiesCompanion Function({
@@ -8271,6 +8369,8 @@ typedef $$ActivitiesTableUpdateCompanionBuilder =
       Value<String> nome,
       Value<DateTime> dataHora,
       Value<String> local,
+      Value<double?> latitude,
+      Value<double?> longitude,
     });
 
 final class $$ActivitiesTableReferences
@@ -8322,6 +8422,16 @@ class $$ActivitiesTableFilterComposer
 
   ColumnFilters<String> get local => $composableBuilder(
     column: $table.local,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get longitude => $composableBuilder(
+    column: $table.longitude,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8378,6 +8488,16 @@ class $$ActivitiesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$TripsTableOrderingComposer get tripId {
     final $$TripsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -8422,6 +8542,12 @@ class $$ActivitiesTableAnnotationComposer
 
   GeneratedColumn<String> get local =>
       $composableBuilder(column: $table.local, builder: (column) => column);
+
+  GeneratedColumn<double> get latitude =>
+      $composableBuilder(column: $table.latitude, builder: (column) => column);
+
+  GeneratedColumn<double> get longitude =>
+      $composableBuilder(column: $table.longitude, builder: (column) => column);
 
   $$TripsTableAnnotationComposer get tripId {
     final $$TripsTableAnnotationComposer composer = $composerBuilder(
@@ -8480,12 +8606,16 @@ class $$ActivitiesTableTableManager
                 Value<String> nome = const Value.absent(),
                 Value<DateTime> dataHora = const Value.absent(),
                 Value<String> local = const Value.absent(),
+                Value<double?> latitude = const Value.absent(),
+                Value<double?> longitude = const Value.absent(),
               }) => ActivitiesCompanion(
                 id: id,
                 tripId: tripId,
                 nome: nome,
                 dataHora: dataHora,
                 local: local,
+                latitude: latitude,
+                longitude: longitude,
               ),
           createCompanionCallback:
               ({
@@ -8494,12 +8624,16 @@ class $$ActivitiesTableTableManager
                 required String nome,
                 required DateTime dataHora,
                 required String local,
+                Value<double?> latitude = const Value.absent(),
+                Value<double?> longitude = const Value.absent(),
               }) => ActivitiesCompanion.insert(
                 id: id,
                 tripId: tripId,
                 nome: nome,
                 dataHora: dataHora,
                 local: local,
+                latitude: latitude,
+                longitude: longitude,
               ),
           withReferenceMapper: (p0) => p0
               .map(
