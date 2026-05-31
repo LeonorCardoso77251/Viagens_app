@@ -140,8 +140,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
         await firebaseUser.reauthenticateWithCredential(credential);
 
         if (alterarEmail) {
-          // Envia email de verificação para o novo endereço;
-          // o email só muda após o utilizador clicar no link
           await firebaseUser.verifyBeforeUpdateEmail(email);
         }
 
@@ -159,6 +157,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
       );
 
       if (!mounted) return;
+
+      if (alterarEmail) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Enviámos um email de confirmação para o novo endereço. '
+              'O email só será atualizado após confirmares.',
+            ),
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
 
       Navigator.pop(context);
     } on firebase_auth.FirebaseAuthException catch (e) {
