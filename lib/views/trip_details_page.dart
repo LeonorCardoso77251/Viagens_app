@@ -23,6 +23,7 @@ class TripDetailsPage extends StatefulWidget {
 }
 
 class _TripDetailsPageState extends State<TripDetailsPage> {
+  late Trip _trip;
   bool _editMode = false;
 
   // CONTROLLERS DE EDIÇÃO
@@ -42,10 +43,9 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
   void initState() {
     super.initState();
 
-    _nomeController = TextEditingController(text: widget.trip.name);
-    _descricaoController = TextEditingController(
-      text: widget.trip.description ?? '',
-    );
+    _trip = widget.trip;
+    _nomeController = TextEditingController(text: _trip.name);
+    _descricaoController = TextEditingController(text: _trip.description ?? '');
 
     _carregarDados();
   }
@@ -68,9 +68,7 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
 
     if (currentUser == null) return;
 
-    final participantes = await appDatabase.tripsDao.getUsersForTrip(
-      widget.trip.id,
-    );
+    final participantes = await appDatabase.tripsDao.getUsersForTrip(_trip.id);
 
     final todosUsers = await appDatabase.usersDao.getAllUsers();
 
@@ -84,7 +82,7 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
   Future<void> _selecionarDataInicio() async {
     final data = await showDatePicker(
       context: context,
-      initialDate: _dataInicioSelecionada ?? widget.trip.startDate,
+      initialDate: _dataInicioSelecionada ?? _trip.startDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
     );
@@ -96,8 +94,8 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
     final data = await showDatePicker(
       context: context,
       initialDate:
-          _dataFimSelecionada ?? _dataInicioSelecionada ?? widget.trip.endDate,
-      firstDate: _dataInicioSelecionada ?? widget.trip.startDate,
+          _dataFimSelecionada ?? _dataInicioSelecionada ?? _trip.endDate,
+      firstDate: _dataInicioSelecionada ?? _trip.startDate,
       lastDate: DateTime(2100),
     );
 
@@ -113,8 +111,8 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
   }
 
   void _entrarEmEdicao() {
-    _nomeController.text = widget.trip.name;
-    _descricaoController.text = widget.trip.description ?? '';
+    _nomeController.text = _trip.name;
+    _descricaoController.text = _trip.description ?? '';
     _dataInicioSelecionada = null;
     _dataFimSelecionada = null;
     setState(() => _editMode = true);
@@ -136,31 +134,45 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
       return;
     }
 
-    await appDatabase.tripsDao.updateTrip(
-      tripId: widget.trip.id,
-      name: nome,
-      description: descricao,
-      destination: widget.trip.destination,
-      startDate: _dataInicioSelecionada ?? widget.trip.startDate,
-      endDate: _dataFimSelecionada ?? widget.trip.endDate,
-    );
+    try {
+      await appDatabase.tripsDao.updateTrip(
+        tripId: _trip.id,
+        name: nome,
+        description: descricao,
+        destination: _trip.destination,
+        startDate: _dataInicioSelecionada ?? _trip.startDate,
+        endDate: _dataFimSelecionada ?? _trip.endDate,
+      );
 
-    await appDatabase.tripsDao.updateTripParticipants(
-      tripId: widget.trip.id,
-      createdByUserId: widget.trip.createdBy,
-      userIds: _participantes.map((u) => u.id).toList(),
-    );
+      await appDatabase.tripsDao.updateTripParticipants(
+        tripId: _trip.id,
+        createdByUserId: _trip.createdBy,
+        userIds: _participantes.map((u) => u.id).toList(),
+      );
 
-    if (!mounted) return;
+      // RECARREGAR TRIP ATUALIZADO DA DB
+      final tripAtualizado = await appDatabase.tripsDao.getTripById(_trip.id);
 
-    setState(() => _editMode = false);
+      if (!mounted) return;
+
+      setState(() {
+        if (tripAtualizado != null) _trip = tripAtualizado;
+        _editMode = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro ao guardar alterações: $e')));
+    }
   }
 
   Future<void> _votar(int destinationId) async {
     if (_currentUserId == null) return;
 
     await appDatabase.destinationOptionsDao.voteForDestination(
-      tripId: widget.trip.id,
+      tripId: _trip.id,
       destinationId: destinationId,
       userId: _currentUserId!,
     );
@@ -189,16 +201,16 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
 
     if (confirmar != true) return;
 
-    await appDatabase.destinationOptionsDao.closeVoting(widget.trip.id);
+    await appDatabase.destinationOptionsDao.closeVoting(_trip.id);
   }
 
-  bool get _isCreator => _currentUserId == widget.trip.createdBy;
+  bool get _isCreator => _currentUserId == _trip.createdBy;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.trip.name),
+        title: Text(_trip.name),
 
         actions: [
           if (!_editMode)
@@ -225,7 +237,7 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
           children: [
             // CABEÇALHO
             TripHeader(
-              trip: widget.trip,
+              trip: _trip,
               editMode: _editMode,
               nomeController: _nomeController,
               descricaoController: _descricaoController,
@@ -240,7 +252,7 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
             // PARTICIPANTES
             TripParticipantsList(
               participantes: _participantes,
-              createdByUserId: widget.trip.createdBy,
+              createdByUserId: _trip.createdBy,
               editMode: _editMode,
               todosUsers: _todosUsers,
               onAdicionar: _adicionarParticipante,
@@ -256,11 +268,11 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
               const SizedBox(height: 10),
 
               // VOTAÇÃO (apenas se não há destino definido)
-              if (widget.trip.destination == null && _currentUserId != null)
+              if (_trip.destination == null && _currentUserId != null)
                 StreamBuilder<List<DestinationWithVotes>>(
                   stream: appDatabase.destinationOptionsDao
                       .watchDestinationsWithVotes(
-                        tripId: widget.trip.id,
+                        tripId: _trip.id,
                         currentUserId: _currentUserId!,
                       ),
                   builder: (context, snapshot) {
@@ -286,32 +298,24 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
                   },
                 ),
 
-              if (widget.trip.destination != null) ...[
-                TripSectionButton(
-                  label: 'Tarefas',
-                  destination: TripTasksPage(
-                    trip: widget.trip,
-                  ),
-                ),
+              TripSectionButton(
+                label: 'Tarefas',
+                destination: TripTasksPage(trip: _trip),
+              ),
 
-                const SizedBox(height: 10),
+              const SizedBox(height: 10),
 
-                TripSectionButton(
-                  label: 'Itinerário',
-                  destination: TripItineraryPage(
-                    trip: widget.trip,
-                  ),
-                ),
+              TripSectionButton(
+                label: 'Itinerário',
+                destination: TripItineraryPage(trip: _trip),
+              ),
 
-                const SizedBox(height: 10),
+              const SizedBox(height: 10),
 
-                TripSectionButton(
-                  label: 'Despesas',
-                  destination: TripExpensesPage(
-                    trip: widget.trip,
-                  ),
-                ),
-              ]
+              TripSectionButton(
+                label: 'Despesas',
+                destination: TripExpensesPage(trip: _trip),
+              ),
             ],
           ],
         ),

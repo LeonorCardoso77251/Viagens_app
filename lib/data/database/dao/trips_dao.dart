@@ -161,10 +161,23 @@ class TripsDao extends DatabaseAccessor<AppDatabase> with _$TripsDaoMixin {
 
       // ADICIONAR membros novos (que ainda não existem)
       for (final userId in userIds) {
-        await into(tripMembers).insertOnConflictUpdate(
-          TripMembersCompanion.insert(tripId: tripId, userId: userId),
-        );
+        final jaExiste =
+            await (select(tripMembers)..where(
+                  (tm) => tm.tripId.equals(tripId) & tm.userId.equals(userId),
+                ))
+                .getSingleOrNull();
+
+        if (jaExiste == null) {
+          await into(
+            tripMembers,
+          ).insert(TripMembersCompanion.insert(tripId: tripId, userId: userId));
+        }
       }
     });
+  }
+
+  // BUSCAR VIAGEM POR ID
+  Future<Trip?> getTripById(int tripId) async {
+    return (select(trips)..where((t) => t.id.equals(tripId))).getSingleOrNull();
   }
 }

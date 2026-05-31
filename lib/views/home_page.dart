@@ -71,7 +71,9 @@ class _HomePageState extends State<HomePage> {
 
               // SEM VIAGENS
               if (trips.isEmpty) {
-                return const Center(child: Text('Bem-vinda à app de viagens!'));
+                return const Center(
+                  child: Text('Bem-vindo(a) à app de viagens!'),
+                );
               }
 
               // LISTA VIAGENS
