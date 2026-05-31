@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home_page.dart';
 import 'tasks_page.dart';
+import 'profile_page.dart';
 
 class MainNavigationPage extends StatefulWidget {
   const MainNavigationPage({super.key});
@@ -16,7 +17,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
     HomePage(),
     TasksPage(),
     Center(child: Text('Todas as Despesas')),
-    Center(child: Text('Perfil')),
+    ProfilePage(),
   ];
 
   final List<String> _titles = const [
@@ -35,9 +36,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_titles[_selectedIndex]),
-      ),
+      appBar: AppBar(title: Text(_titles[_selectedIndex])),
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
@@ -56,10 +55,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
             icon: Icon(Icons.attach_money),
             label: 'Despesas',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Perfil',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
         ],
       ),
     );
