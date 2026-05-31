@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../data/database/app_database.dart';
+
 class CreateExpensePage extends StatefulWidget {
-  const CreateExpensePage({super.key});
+  final List<User> participants;
+
+  const CreateExpensePage({
+    super.key,
+    required this.participants,
+  });
 
   @override
   State<CreateExpensePage> createState() => _CreateExpensePageState();
@@ -11,6 +18,14 @@ class _CreateExpensePageState extends State<CreateExpensePage> {
   final titleController = TextEditingController();
   final descriptionController = TextEditingController();
   final valorController = TextEditingController();
+
+  late List<int> selectedUserIds;
+
+  @override
+  void initState() {
+    super.initState();
+    selectedUserIds = widget.participants.map((user) => user.id).toList();
+  }
 
   @override
   void dispose() {
@@ -23,9 +38,11 @@ class _CreateExpensePageState extends State<CreateExpensePage> {
   void guardarDespesa() {
     final title = titleController.text.trim();
     final description = descriptionController.text.trim();
-    final valor = double.tryParse(valorController.text.trim());
+    final valor = double.tryParse(
+      valorController.text.trim().replaceAll(',', '.'),
+    );
 
-    if (title.isEmpty || valor == null || valor <= 0) {
+    if (title.isEmpty || valor == null || valor <= 0 || selectedUserIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Preenche os campos corretamente.')),
       );
@@ -36,14 +53,17 @@ class _CreateExpensePageState extends State<CreateExpensePage> {
       'title': title,
       'description': description.isEmpty ? null : description,
       'amountCents': (valor * 100).round(),
+      'splitUserIds': selectedUserIds,
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Criar Despesa')),
-      body: Padding(
+      appBar: AppBar(
+        title: const Text('Criar Despesa'),
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
@@ -70,7 +90,9 @@ class _CreateExpensePageState extends State<CreateExpensePage> {
             const SizedBox(height: 18),
             TextField(
               controller: valorController,
-              keyboardType: TextInputType.number,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: InputDecoration(
                 labelText: 'Valor (€)',
                 border: OutlineInputBorder(
@@ -78,6 +100,38 @@ class _CreateExpensePageState extends State<CreateExpensePage> {
                 ),
               ),
             ),
+            const SizedBox(height: 24),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Dividir despesa entre:',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...widget.participants.map((user) {
+              final isSelected = selectedUserIds.contains(user.id);
+
+              return CheckboxListTile(
+                value: isSelected,
+                title: Text(user.name),
+                subtitle: Text(user.email),
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                onChanged: (value) {
+                  setState(() {
+                    if (value == true) {
+                      selectedUserIds.add(user.id);
+                    } else {
+                      selectedUserIds.remove(user.id);
+                    }
+                  });
+                },
+              );
+            }),
             const SizedBox(height: 24),
             Row(
               children: [
