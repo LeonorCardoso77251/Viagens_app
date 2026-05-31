@@ -20,6 +20,18 @@ class ExpenseWithPayer {
   ExpenseWithPayer({required this.expense, required this.payer});
 }
 
+class ExpenseWithDetails {
+  final Expense expense;
+  final User payer;
+  final List<ExpenseSplit> splits;
+
+  ExpenseWithDetails({
+    required this.expense,
+    required this.payer,
+    required this.splits,
+  });
+}
+
 @DriftAccessor(tables: [Expenses, ExpenseSplits])
 class ExpensesDao extends DatabaseAccessor<AppDatabase>
     with _$ExpensesDaoMixin {
@@ -35,7 +47,7 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
   }) async {
     final splitTotal = splits.fold<int>(
       0,
-      (sum, split) => sum + split.amountCents,
+          (sum, split) => sum + split.amountCents,
     );
 
     if (splitTotal != amountCents) {
@@ -71,15 +83,15 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
 
   Future<List<Expense>> getExpensesForTrip(int tripId) {
     return (select(expenses)
-          ..where((e) => e.tripId.equals(tripId))
-          ..orderBy([(e) => OrderingTerm(expression: e.createdAt)]))
+      ..where((e) => e.tripId.equals(tripId))
+      ..orderBy([(e) => OrderingTerm(expression: e.createdAt)]))
         .get();
   }
 
   Stream<List<Expense>> watchExpensesForTrip(int tripId) {
     return (select(expenses)
-          ..where((e) => e.tripId.equals(tripId))
-          ..orderBy([(e) => OrderingTerm(expression: e.createdAt)]))
+      ..where((e) => e.tripId.equals(tripId))
+      ..orderBy([(e) => OrderingTerm(expression: e.createdAt)]))
         .watch();
   }
 
@@ -114,11 +126,11 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
 
   Stream<List<ExpenseWithPayer>> watchExpensesWithPayerForTrip(int tripId) {
     final query =
-        select(
-            expenses,
-          ).join([innerJoin(users, users.id.equalsExp(expenses.paidBy))])
-          ..where(expenses.tripId.equals(tripId))
-          ..orderBy([OrderingTerm.desc(expenses.createdAt)]);
+    select(
+      expenses,
+    ).join([innerJoin(users, users.id.equalsExp(expenses.paidBy))])
+      ..where(expenses.tripId.equals(tripId))
+      ..orderBy([OrderingTerm.desc(expenses.createdAt)]);
 
     return query.watch().map((rows) {
       return rows.map((row) {
@@ -127,6 +139,35 @@ class ExpensesDao extends DatabaseAccessor<AppDatabase>
           payer: row.readTable(users),
         );
       }).toList();
+    });
+  }
+
+  Stream<List<ExpenseWithDetails>> watchExpensesWithDetailsForTrip(int tripId) {
+    final query =
+    select(
+      expenses,
+    ).join([innerJoin(users, users.id.equalsExp(expenses.paidBy))])
+      ..where(expenses.tripId.equals(tripId))
+      ..orderBy([OrderingTerm.desc(expenses.createdAt)]);
+
+    return query.watch().asyncMap((rows) async {
+      final result = <ExpenseWithDetails>[];
+
+      for (final row in rows) {
+        final expense = row.readTable(expenses);
+        final payer = row.readTable(users);
+        final splits = await getSplitsForExpense(expense.id);
+
+        result.add(
+          ExpenseWithDetails(
+            expense: expense,
+            payer: payer,
+            splits: splits,
+          ),
+        );
+      }
+
+      return result;
     });
   }
 }
